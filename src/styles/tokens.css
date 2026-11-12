@@ -1,0 +1,152 @@
+/* =========================================================================
+   Servicio estadístico ENAHO — tokens de diseño
+   Uso: importar una vez (p. ej. en src/main.tsx). El tema oscuro se activa
+   con <html data-theme="dark">. Usar SOLO estas variables para color.
+   Tipografía: IBM Plex Sans (texto) + IBM Plex Mono (números y códigos).
+   ========================================================================= */
+
+:root {
+  /* Superficies y texto */
+  --bg: #F5F7F9;          /* fondo de página */
+  --surface: #FFFFFF;     /* tarjetas, barras superiores */
+  --surface-2: #F7F8FA;   /* barra de filtros, cabeceras de tabla */
+  --ink: #1C2833;         /* texto principal */
+  --ink-2: #3E4C59;       /* texto secundario */
+  --muted: #566573;       /* texto atenuado / gris neutro */
+  --line: #D5DBE1;        /* bordes */
+  --line-2: #E6EAEE;      /* divisores suaves */
+  --line-3: #B4BEC8;      /* borde de campos de formulario */
+
+  /* Acciones y enlaces */
+  --btn: #0B5788;         /* azul institucional: botón primario */
+  --link: #0B5788;
+  --focus: #0B5788;
+  --seg-on: #FFFFFF;      /* opción activa del selector Claro/Oscuro */
+
+  /* Chips */
+  --chip-bg: #EEF1F4;
+  --ci-bg: #E5ECF2;       /* chip "IC 95%" y opción seleccionada en listas */
+  --ci-ink: #0B5788;
+
+  /* Datos — barras */
+  --bar: #127A80;         /* Sí · confiable (teal) */
+  --bar-ref: #A9741F;     /* Sí · referencial (ocre apagado) */
+  --no: #DEE3E8;          /* No (resto de la barra al 100%) */
+  --grid: #E6EAEE;
+
+  /* Datos — mapa: escala secuencial azul petróleo, 5 clases */
+  --q1: #D6ECEC;          /* < 10  (teal secuencial, claro -> oscuro) */
+  --q2: #9BD0D1;          /* 10–20 */
+  --q3: #58AAAE;          /* 20–30 */
+  --q4: #2A8186;          /* 30–40 */
+  --q5: #103F47;          /* ≥ 40 */
+  --map-line: #FFFFFF;    /* borde entre departamentos */
+
+  /* Datos — cruce por condición de pobreza (3 tonos teal) */
+  --p1: #0F3D45;          /* Pobre extremo */
+  --p2: #17606A;          /* Pobre no extremo */
+  --p3: #2A8186;          /* No pobre */
+
+  /* Estados */
+  --ok-bg: #E3EFEF;  --ok-ink: #0E6A6F;  --ok-line: #9CC4C6;     /* Confiable / Validado */
+  --warn-bg: #F6EEDF; --warn-ink: #8A4A05; --warn-line: #B8894A;  /* Referencial (solo alertas) */
+  --warn-row: #FBF6EC;                                            /* fila referencial en tabla */
+  --err-bg: #F7E8E6; --err-ink: #9B2C24; --err-line: #DDAAA4;     /* Error */
+  --gap-bg: #EAF1F1; --gap-line: #BCD3D4;                         /* Banner de brecha significativa */
+  --neu-bg: #EEF1F4; --neu-line: #C9D1D9;                         /* Neutro: brecha no significativa, "En revisión" */
+
+  /* Tooltip */
+  --tip-bg: #1C2833; --tip-ink: #FFFFFF; --tip-muted: #B9C3CC;
+
+  /* Panel JSON (resaltado de sintaxis) */
+  --code-bg: #F7F8FA;
+  --k: #0E6A6F;  /* claves */
+  --s: #8A4A05;  /* strings */
+  --n: #0B5788;  /* números */
+  --b: #5E5280;  /* booleanos / null */
+
+  /* Otros */
+  --row-hover: #F2F5F7;
+  --sk: #E8ECF0; --sk-2: #F3F5F7;   /* skeleton (cargando) */
+  --shadow: 0 1px 2px rgba(28, 40, 51, .05);
+
+  /* Barra lateral de vistas (igual en ambos temas salvo el fondo) */
+  --nav-bg: #142B3E;
+  --nav-edge: #142B3E;
+  --nav-ink: #C8D3DD;
+  --nav-ink-active: #FFFFFF;
+  --nav-muted: #8FA0B0;               /* etiquetas de grupo, íconos inactivos */
+  --nav-icon-active: #A9D3D4;
+  --nav-active-bg: rgba(143, 179, 207, .16);
+  --nav-line: #284055;
+  --nav-btn-line: #2F4A61;
+
+  /* Tipografía */
+  --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+:root[data-theme="dark"] {
+  --bg: #121820;
+  --surface: #1A222B;
+  --surface-2: #161D25;
+  --ink: #E4E9EE;
+  --ink-2: #B6C0CA;
+  --muted: #909CA8;
+  --line: #2D3843;
+  --line-2: #242E38;
+  --line-3: #3E4B58;
+
+  --btn: #2A6E9C;
+  --link: #8FB6D6;
+  --focus: #8FB6D6;
+  --seg-on: #2A3540;
+
+  --chip-bg: #222C36;
+  --ci-bg: #1E2F3E;
+  --ci-ink: #A9C6DD;
+
+  --bar: #4A9EA3;
+  --bar-ref: #C99A55;
+  --no: #2E3944;
+  --grid: #26313C;
+
+  /* En oscuro: más valor = más luminoso */
+  --q1: #1C3A3C;
+  --q2: #27595C;
+  --q3: #357E82;
+  --q4: #52A4A8;
+  --q5: #8ECBCD;
+  --map-line: #121820;
+
+  --p1: #3A858A;
+  --p2: #5BA3A7;
+  --p3: #93C9CB;
+
+  --ok-bg: #16292B;  --ok-ink: #8CCFD0;  --ok-line: #2E5557;
+  --warn-bg: #2E2618; --warn-ink: #DDB77E; --warn-line: #7A5F33;
+  --warn-row: #231E16;
+  --err-bg: #2F1E1D; --err-ink: #E8A79F; --err-line: #6B3A35;
+  --gap-bg: #172628; --gap-line: #2B4447;
+  --neu-bg: #1F2830; --neu-line: #36424E;
+
+  --tip-bg: #E4E9EE; --tip-ink: #1C2833; --tip-muted: #4A5866;
+
+  --code-bg: #141B22;
+  --k: #7DBFC2;
+  --s: #DDB77E;
+  --n: #8FB6D6;
+  --b: #B4A9D0;
+
+  --row-hover: #202A34;
+  --sk: #212B35; --sk-2: #2A3540;
+  --shadow: none;
+
+  --nav-bg: #0F1923;
+  --nav-edge: #26323D;
+}
+
+html { background: var(--bg); color: var(--ink); font-family: var(--font-sans); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
