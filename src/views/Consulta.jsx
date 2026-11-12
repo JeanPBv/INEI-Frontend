@@ -1,5 +1,5 @@
 // Vista Consulta: filtros arriba + resultados (KPI / barras / tabla / JSON).
-// El estado vive en la URL (?indicador=&ambito=&anio=&cruce=) → consultas compartibles.
+// El estado vive en la URL (?indicator=&level=&year=&cross=) → consultas compartibles.
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import FilterBar from "../components/FilterBar.jsx";
@@ -8,122 +8,122 @@ import {
   ResultHeader, KpiCard, GapBanner, ResultsTable, JsonPanel,
   EmptyState, LoadingState, ErrorState,
 } from "../components/results.jsx";
-import { consultar, API_BASE } from "../lib/api.js";
-import { UNIDAD_TXT, AMBITO_DESC } from "../lib/constants.js";
+import { query, API_BASE } from "../lib/api.js";
+import { UNIT_LABEL } from "../lib/constants.js";
 
-const AMB_ETQ = { nacional: "Nacional", area: "Área urbano/rural",
+const LEVEL_TAG = { nacional: "Nacional", area: "Área urbano/rural",
   region_natural: "Región natural", departamento: "Departamento" };
 
 export default function Consulta({ meta }) {
-  const { catalogo, anios } = meta;
-  const latest = anios.find((a) => a.estado === "validado")?.anio || 2024;
+  const { catalog, years } = meta;
+  const latest = years.find((a) => a.status === "validado")?.year || 2024;
   const [params, setParams] = useSearchParams();
 
   const committed = useMemo(() => ({
-    indicador: params.get("indicador") || "",
-    ambito: params.get("ambito") || "nacional",
-    anio: Number(params.get("anio")) || latest,
-    cruce: params.get("cruce") === "pobreza",
+    indicator: params.get("indicator") || "",
+    level: params.get("level") || "nacional",
+    year: Number(params.get("year")) || latest,
+    cross: params.get("cross") === "pobreza",
   }), [params, latest]);
 
   const [draft, setDraft] = useState(committed);
   useEffect(() => setDraft(committed), [committed]);
 
-  const [st, setSt] = useState({ phase: committed.indicador ? "loading" : "empty" });
+  const [st, setSt] = useState({ phase: committed.indicator ? "loading" : "empty" });
 
   useEffect(() => {
-    if (!committed.indicador) { setSt({ phase: "empty" }); return; }
+    if (!committed.indicator) { setSt({ phase: "empty" }); return; }
     let alive = true;
     setSt({ phase: "loading" });
-    consultar(committed).then((res) => {
+    query(committed).then((res) => {
       if (!alive) return;
       setSt({ phase: res.ok ? "ok" : "error", res });
     });
     return () => { alive = false; };
-  }, [committed.indicador, committed.ambito, committed.anio, committed.cruce]);
+  }, [committed.indicator, committed.level, committed.year, committed.cross]);
 
-  const ind = catalogo.find((c) => c.id === draft.indicador);
+  const ind = catalog.find((c) => c.id === draft.indicator);
 
   const onChange = (patch) => setDraft((d) => {
     const next = { ...d, ...patch };
-    if (patch.indicador !== undefined) {
-      const ni = catalogo.find((c) => c.id === patch.indicador);
-      if (ni && !ni.cruzable) next.cruce = false;
-      if (ni && !ni.ambitos_permitidos.includes(next.ambito)) next.ambito = ni.ambitos_permitidos[0];
+    if (patch.indicator !== undefined) {
+      const ni = catalog.find((c) => c.id === patch.indicator);
+      if (ni && !ni.crossable) next.cross = false;
+      if (ni && !ni.levels_allowed.includes(next.level)) next.level = ni.levels_allowed[0];
     }
     return next;
   });
 
   const commit = (q) => {
-    const p = { indicador: q.indicador, ambito: q.ambito, anio: String(q.anio) };
-    if (q.cruce) p.cruce = "pobreza";
+    const p = { indicator: q.indicator, level: q.level, year: String(q.year) };
+    if (q.cross) p.cross = "pobreza";
     setParams(p);
   };
-  const onConsultar = () => commit(draft);
+  const onSubmit = () => commit(draft);
 
   return (
     <>
       <FilterBar
-        catalogo={catalogo} anios={anios} value={draft} onChange={onChange}
-        onConsultar={onConsultar} loading={st.phase === "loading"}
-        errorAmbito={st.phase === "error" && st.res.error?.error === "ambito_no_permitido"}
+        catalog={catalog} years={years} value={draft} onChange={onChange}
+        onSubmit={onSubmit} loading={st.phase === "loading"}
+        errorLevel={st.phase === "error" && st.res.error?.error === "level_not_allowed"}
       />
       <div className="content">
-        <Resultado
+        <Result
           st={st} ind={ind} committed={committed}
-          onEjemplo={(q) => commit({ ambito: "nacional", anio: latest, cruce: false, ...q })}
-          onAmbito={(a) => commit({ ...committed, ambito: a })}
+          onExample={(q) => commit({ level: "nacional", year: latest, cross: false, ...q })}
+          onLevel={(a) => commit({ ...committed, level: a })}
         />
       </div>
     </>
   );
 }
 
-function Resultado({ st, ind, committed, onEjemplo, onAmbito }) {
-  if (st.phase === "empty") return <EmptyState onEjemplo={onEjemplo} />;
+function Result({ st, ind, committed, onExample, onLevel }) {
+  if (st.phase === "empty") return <EmptyState onExample={onExample} />;
   if (st.phase === "loading") return <LoadingState />;
   if (st.phase === "error")
     return <ErrorState status={st.res.status} error={st.res.error}
-      permitidos={st.res.error?.ambitos_permitidos} onAmbito={onAmbito} />;
+      allowed={st.res.error?.levels_allowed} onLevel={onLevel} />;
 
   const { res } = st;
-  const formato = ind?.unidad || res.meta?.formato || "porcentaje";
-  const rows = res.resultados;
-  const titulo = ind?.titulo || res.meta?.titulo || committed.indicador;
-  const nacional = committed.ambito === "nacional" && !committed.cruce && rows.length === 1;
-  const esPct = formato === "porcentaje";
+  const format = ind?.unit || res.meta?.format || "porcentaje";
+  const rows = res.rows;
+  const title = ind?.title || res.meta?.title || committed.indicator;
+  const national = committed.level === "nacional" && !committed.cross && rows.length === 1;
+  const isPct = format === "porcentaje";
 
   const csv = () => window.open(
-    `${API_BASE}/${committed.cruce ? "cruces" : "estimaciones"}?indicador=${committed.indicador}`
-    + `&ambito=${committed.ambito}&anio=${committed.anio}`
-    + `${committed.cruce ? "&cruzar_por=pobreza" : ""}&formato=csv`, "_blank");
+    `${API_BASE}/${committed.cross ? "crosstabs" : "estimates"}?indicator=${committed.indicator}`
+    + `&level=${committed.level}&year=${committed.year}`
+    + `${committed.cross ? "&cross_by=pobreza" : ""}&format=csv`, "_blank");
 
   return (
     <div className="stack">
       <ResultHeader
-        titulo={`${titulo}${committed.ambito !== "nacional" ? ` por ${AMB_ETQ[committed.ambito].toLowerCase()}` : ""}, ${committed.anio}`}
-        ambitoEtq={AMB_ETQ[committed.ambito]} anio={committed.anio} cruce={committed.cruce}
-        unidadTxt={UNIDAD_TXT[formato]} request={res.request} onCsv={csv}
+        title={`${title}${committed.level !== "nacional" ? ` por ${LEVEL_TAG[committed.level].toLowerCase()}` : ""}, ${committed.year}`}
+        levelTag={LEVEL_TAG[committed.level]} year={committed.year} cross={committed.cross}
+        unitText={UNIT_LABEL[format]} request={res.request} onCsv={csv}
       />
 
-      {committed.cruce && <GapBanner rows={rows} />}
+      {committed.cross && <GapBanner rows={rows} />}
 
-      {nacional ? (
-        <KpiCard row={rows[0]} formato={formato} titulo={titulo} />
+      {national ? (
+        <KpiCard row={rows[0]} format={format} title={title} />
       ) : (
         <div className="card pad chart-wrap">
-          {esPct
-            ? <ProportionBarChart rows={rows} cruce={committed.cruce} />
-            : <SimpleBarChart rows={rows} formato={formato} />}
+          {isPct
+            ? <ProportionBarChart rows={rows} cross={committed.cross} />
+            : <SimpleBarChart rows={rows} format={format} />}
           <p className="chart-note">
-            {esPct
+            {isPct
               ? "Barra al 100%: el tramo en color es “Sí” y el gris es el resto (“No”). El IC 95% está en el tooltip y la tabla. ▲ = referencial (CV > 15%)."
               : "Barra simple de 0 al máximo. El IC 95% está en el tooltip y la tabla. ▲ = referencial (CV > 15%)."}
           </p>
         </div>
       )}
 
-      <ResultsTable rows={rows} formato={formato} />
+      <ResultsTable rows={rows} format={format} />
       <JsonPanel status={res.status} data={res.raw} />
     </div>
   );

@@ -4,7 +4,7 @@ import { Chip } from "../components/results.jsx";
 import { n0 } from "../lib/format.js";
 import { API_BASE } from "../lib/api.js";
 
-const PASOS = [
+const STEPS = [
   { t: "Descargar microdatos", d: "Módulos de la ENAHO del año (INEI), en .sav" },
   { t: "Estandarizar variables", d: "Mapear al esquema del motor (pesos, ámbitos)" },
   { t: "Validar", d: "Comparar con cifras oficiales; revisar CV" },
@@ -12,13 +12,13 @@ const PASOS = [
 ];
 
 export default function Datos({ meta }) {
-  const { anios } = meta;
+  const { years } = meta;
   return (
     <div className="content stack">
       <p className="prose">
         Cada año de la ENAHO es una <b>versión de datos</b> independiente. Cuando un año se
         <b> valida</b>, aparece en el filtro <b>Año</b> de las consultas y como valor del parámetro
-        <code className="mono"> anio</code> de la API. Los años en revisión no se publican todavía.
+        <code className="mono"> year</code> de la API. Los años en revisión no se publican todavía.
       </p>
 
       <div className="card pad">
@@ -29,16 +29,16 @@ export default function Datos({ meta }) {
               <tr><th scope="col">Año</th><th>Versión de datos</th><th>Módulos</th><th>Hogares</th><th>Estado</th></tr>
             </thead>
             <tbody>
-              {anios.map((a) => (
-                <tr key={a.anio}>
-                  <th scope="row" className="lvl mono">{a.anio}</th>
+              {years.map((a) => (
+                <tr key={a.year}>
+                  <th scope="row" className="lvl mono">{a.year}</th>
                   <td className="mono">{a.version}</td>
                   <td style={{ textAlign: "left" }}>
-                    <div className="chips">{(a.modulos || []).map((m) => <Chip key={m}>{m}</Chip>)}</div>
+                    <div className="chips">{(a.modules || []).map((m) => <Chip key={m}>{m}</Chip>)}</div>
                   </td>
-                  <td className="mono">{n0(a.hogares)}</td>
+                  <td className="mono">{n0(a.households)}</td>
                   <td style={{ textAlign: "left" }}>
-                    {a.estado === "validado"
+                    {a.status === "validado"
                       ? <Chip kind="ok" icon={CheckCircle2}>Validado</Chip>
                       : <Chip kind="neu" icon={Clock}>En revisión</Chip>}
                   </td>
@@ -58,7 +58,7 @@ export default function Datos({ meta }) {
           solo refleja los años ya publicados.
         </p>
         <div className="add-year">
-          {PASOS.map((p, i) => (
+          {STEPS.map((p, i) => (
             <div className="step" key={i}>
               <div className="num">{i + 1}</div>
               <b>{p.t}</b><span>{p.d}</span>
@@ -74,11 +74,11 @@ export default function Datos({ meta }) {
       </div>
 
       <div className="card pad">
-        <h3 style={{ margin: "0 0 10px" }}>Ejemplos de la API con el parámetro <code className="mono">anio</code></h3>
+        <h3 style={{ margin: "0 0 10px" }}>Ejemplos de la API con el parámetro <code className="mono">year</code></h3>
         <pre className="json mono" style={{ borderTop: 0, background: "var(--code-bg)", borderRadius: 8 }}>
-{`GET ${API_BASE}/estimaciones?indicador=pobreza_total&ambito=departamento&anio=2024
-GET ${API_BASE}/estimaciones?indicador=pobreza_total&ambito=departamento&anio=2023   # cuando 2023 se valide
-GET ${API_BASE}/anios   # años disponibles y su estado`}
+{`GET ${API_BASE}/estimates?indicator=pobreza_total&level=departamento&year=2024
+GET ${API_BASE}/estimates?indicator=pobreza_total&level=departamento&year=2023   # cuando 2023 se valide
+GET ${API_BASE}/years   # años disponibles y su estado`}
         </pre>
       </div>
     </div>

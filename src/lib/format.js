@@ -9,26 +9,25 @@ export const n0 = (v) => (v == null || isNaN(v) ? "—" : NF0.format(v));
 export const n2 = (v) => (v == null || isNaN(v) ? "—" : NF2.format(v));
 
 // Valor de estimación según el formato del indicador.
-export function fmtValor(v, formato) {
+export function fmtValue(v, format) {
   if (v == null || isNaN(v)) return "—";
-  if (formato === "porcentaje") return `${n1(v)}%`;
-  if (formato === "soles") return `S/ ${n0(v)}`;
-  return n0(v); // conteo
+  if (format === "porcentaje") return `${n1(v)}%`;
+  if (format === "soles") return `S/ ${n0(v)}`;
+  return n0(v);
 }
 
-// Sufijo corto de unidad.
-export const unidadSufijo = (formato) =>
-  formato === "porcentaje" ? "%" : formato === "soles" ? "S/" : "hogares";
+export const unitSuffix = (format) =>
+  format === "porcentaje" ? "%" : format === "soles" ? "S/" : "hogares";
 
-// Nombres bonitos para niveles que vienen en minúscula (área, región natural).
-const BONITO = {
+// Nombre presentable para niveles que vienen en minúscula (área, región natural).
+const PRETTY = {
   urbano: "Urbano", rural: "Rural",
   costa: "Costa", sierra: "Sierra", selva: "Selva",
 };
-export const nivelBonito = (s) => BONITO[String(s).toLowerCase()] || s;
+export const prettyLevel = (s) => PRETTY[String(s).toLowerCase()] || s;
 
-// Normaliza nombre de departamento para casar con el GeoJSON (NOMBDEP en mayúsculas).
-export const aGeoNombre = (s) =>
+// Normaliza el nombre de departamento para casar con el GeoJSON (NOMBDEP en mayúsculas).
+export const toGeoName = (s) =>
   String(s).toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
 // Lee una variable CSS del tema actual (los charts necesitan colores concretos).

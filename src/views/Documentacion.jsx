@@ -1,10 +1,9 @@
-// Vista Documentación: guía de uso del servicio para el usuario final y el
-// consumidor de la API. Las tablas de indicadores y años se alimentan en vivo
-// del catálogo (/indicadores, /anios) para no quedar desactualizadas.
+// Vista Documentación: guía de uso del servicio y de la API. Las tablas de
+// indicadores y años se alimentan en vivo del catálogo (/indicators, /years).
 import { useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../lib/api.js";
 
-const SECCIONES = [
+const SECTIONS = [
   { id: "intro", label: "Introducción" },
   { id: "leer-cifra", label: "Cómo leer una cifra" },
   { id: "api", label: "La API" },
@@ -13,7 +12,7 @@ const SECCIONES = [
   { id: "fuentes", label: "Fuentes y notas" },
 ];
 
-const AMB_LABEL = {
+const LEVEL_LABEL = {
   nacional: "Nacional", area: "Área", region_natural: "Región natural", departamento: "Departamento",
 };
 
@@ -22,14 +21,14 @@ function Code({ children }) {
 }
 
 export default function Documentacion({ meta }) {
-  const catalogo = meta?.catalogo || [];
-  const anios = meta?.anios || [];
-  const [activo, setActivo] = useState("intro");
+  const catalog = meta?.catalog || [];
+  const years = meta?.years || [];
+  const [active, setActive] = useState("intro");
 
-  const years = useMemo(
-    () => [...new Set(anios.map((a) => a.anio))].sort((a, b) => a - b), [anios]);
-  const rango = years.length
-    ? (years[0] === years[years.length - 1] ? `${years[0]}` : `${years[0]}–${years[years.length - 1]}`)
+  const ys = useMemo(
+    () => [...new Set(years.map((a) => a.year))].sort((a, b) => a - b), [years]);
+  const range = ys.length
+    ? (ys[0] === ys[ys.length - 1] ? `${ys[0]}` : `${ys[0]}–${ys[ys.length - 1]}`)
     : "—";
 
   // Scroll-spy: resalta en el índice la sección visible.
@@ -37,21 +36,20 @@ export default function Documentacion({ meta }) {
     const obs = new IntersectionObserver(
       (entries) => {
         const vis = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (vis[0]) setActivo(vis[0].target.id);
+        if (vis[0]) setActive(vis[0].target.id);
       },
       { rootMargin: "-80px 0px -70% 0px", threshold: 0 }
     );
-    SECCIONES.forEach((s) => { const el = document.getElementById(s.id); if (el) obs.observe(el); });
+    SECTIONS.forEach((s) => { const el = document.getElementById(s.id); if (el) obs.observe(el); });
     return () => obs.disconnect();
   }, []);
 
   return (
     <div className="content">
       <div className="doc-wrap">
-        {/* Índice */}
         <nav className="doc-toc" aria-label="Contenido">
-          {SECCIONES.map((s) => (
-            <a key={s.id} href={`#${s.id}`} className={activo === s.id ? "active" : ""}>{s.label}</a>
+          {SECTIONS.map((s) => (
+            <a key={s.id} href={`#${s.id}`} className={active === s.id ? "active" : ""}>{s.label}</a>
           ))}
         </nav>
 
@@ -66,7 +64,7 @@ export default function Documentacion({ meta }) {
               para que se sepa qué tan precisa es.
             </p>
             <p>
-              Años disponibles: <b>{rango}</b>. Módulos usados: <b>01 Vivienda</b> y <b>34 Sumaria</b>.
+              Años disponibles: <b>{range}</b>. Módulos usados: <b>01 Vivienda</b> y <b>34 Sumaria</b>.
               El cálculo estadístico corre en R (paquete <code>survey</code>); la API solo lo expone.
             </p>
           </section>
@@ -76,15 +74,15 @@ export default function Documentacion({ meta }) {
             <h2>Cómo leer una cifra</h2>
             <p>Ejemplo: <i>pobreza monetaria total, nacional, 2024 = 27.6%</i>.</p>
             <dl className="doc-dl">
-              <dt>Estimación</dt>
+              <dt>Estimación (<code>estimate</code>)</dt>
               <dd>El valor del indicador calculado a partir de la muestra (p. ej. <b>27.6%</b> de las personas).</dd>
-              <dt>Error estándar (EE)</dt>
+              <dt>Error estándar (<code>standard_error</code>)</dt>
               <dd>Cuánto variaría la estimación si se repitiera la encuesta con otra muestra. Más chico = más preciso.</dd>
-              <dt>Intervalo de confianza 95% (IC)</dt>
+              <dt>Intervalo de confianza 95% (<code>ci_lower</code>, <code>ci_upper</code>)</dt>
               <dd>El rango donde está el valor real con 95% de confianza: <code>estimación ± 1.96·EE</code>.</dd>
-              <dt>Coeficiente de variación (CV)</dt>
+              <dt>Coeficiente de variación (<code>cv</code>)</dt>
               <dd>El EE relativo al tamaño de la cifra (<code>EE ÷ estimación × 100</code>). Permite comparar la confiabilidad entre indicadores.</dd>
-              <dt>n muestral</dt>
+              <dt>n muestral (<code>sample_size</code>)</dt>
               <dd>Número de hogares o personas de la muestra usados en el cálculo.</dd>
             </dl>
             <h3>Confiable vs. referencial</h3>
@@ -92,7 +90,7 @@ export default function Documentacion({ meta }) {
               Según el criterio del INEI, una estimación es <b className="doc-ok">confiable</b> cuando su
               <b> CV ≤ 15%</b>, y <b className="doc-warn">referencial ▲</b> cuando su <b>CV &gt; 15%</b>
               {" "}(poca precisión, normalmente por muestra pequeña: departamentos chicos, cruces muy finos o
-              indicadores poco frecuentes). Las cifras referenciales se marcan con ▲ y color ocre; úsalas solo como referencia.
+              indicadores poco frecuentes). En la respuesta llegan marcadas con <code>unreliable: true</code>; úsalas solo como referencia.
             </p>
           </section>
 
@@ -103,11 +101,11 @@ export default function Documentacion({ meta }) {
 
             <h3>Endpoints</h3>
             {[
-              { m: "GET", p: "/indicadores", d: "Catálogo de indicadores para la UI." },
-              { m: "GET", p: "/ambitos", d: "Niveles de inferencia válidos." },
-              { m: "GET", p: "/anios", d: "Años de datos cargados." },
-              { m: "GET", p: "/estimaciones", d: "Estimación de un indicador con EE/CV/IC.", q: "indicador, ambito, anio, formato" },
-              { m: "GET", p: "/cruces", d: "Cruce de un indicador por condición de pobreza.", q: "indicador, ambito, anio, cruzar_por, formato" },
+              { m: "GET", p: "/indicators", d: "Catálogo de indicadores para la UI." },
+              { m: "GET", p: "/levels", d: "Niveles de inferencia válidos." },
+              { m: "GET", p: "/years", d: "Años de datos cargados." },
+              { m: "GET", p: "/estimates", d: "Estimación de un indicador con EE/CV/IC.", q: "indicator, level, year, format" },
+              { m: "GET", p: "/crosstabs", d: "Cruce de un indicador por condición de pobreza.", q: "indicator, level, year, cross_by, format" },
             ].map((e) => (
               <div key={e.p} className="doc-epcard">
                 <div className="doc-ep">
@@ -119,35 +117,35 @@ export default function Documentacion({ meta }) {
             ))}
 
             <h3>Ejemplo de petición</h3>
-            <Code>{`GET ${API_BASE}/estimaciones?indicador=pobreza_total&ambito=nacional&anio=2024`}</Code>
+            <Code>{`GET ${API_BASE}/estimates?indicator=pobreza_total&level=nacional&year=2024`}</Code>
             <h3>Ejemplo de respuesta</h3>
             <Code>{`{
   "meta": {
-    "fuente": "ENAHO", "anio": 2024,
-    "indicador": "pobreza_total", "ambito": "nacional",
-    "nivel_confianza": 0.95, "umbral_cv_referencial": 15
+    "source": "ENAHO", "year": 2024,
+    "indicator": "pobreza_total", "level": "nacional",
+    "confidence_level": 0.95, "cv_threshold": 15
   },
   "data": [
     {
-      "nivel": "Nacional",
-      "estimacion": 27.58, "error_estandar": 0.52, "cv": 1.88,
-      "ic_inf": 26.56, "ic_sup": 28.60,
-      "referencial": false, "n_muestral": 33691
+      "level": "Nacional",
+      "estimate": 27.58, "standard_error": 0.52, "cv": 1.88,
+      "ci_lower": 26.56, "ci_upper": 28.60,
+      "unreliable": false, "sample_size": 33691
     }
   ]
 }`}</Code>
 
             <h3>Descarga CSV</h3>
-            <p>Agrega <code>&formato=csv</code> a <code>/estimaciones</code> o <code>/cruces</code> para descargar los resultados como CSV.</p>
+            <p>Agrega <code>&format=csv</code> a <code>/estimates</code> o <code>/crosstabs</code> para descargar los resultados como CSV.</p>
 
             <h3>Códigos de error</h3>
             <table className="doc-table">
               <thead><tr><th>Código</th><th>Clave</th><th>Cuándo ocurre</th></tr></thead>
               <tbody>
-                <tr><td>404</td><td><code>indicador_inexistente</code></td><td>El indicador no está en el catálogo.</td></tr>
-                <tr><td>404</td><td><code>anio_no_disponible</code></td><td>No hay datos preparados para ese año.</td></tr>
-                <tr><td>422</td><td><code>ambito_no_permitido</code></td><td>El indicador no se publica a ese nivel (p. ej. pobreza extrema por departamento).</td></tr>
-                <tr><td>400</td><td><code>ambito_invalido</code></td><td>El ámbito no es un nivel de inferencia válido.</td></tr>
+                <tr><td>404</td><td><code>unknown_indicator</code></td><td>El indicador no está en el catálogo.</td></tr>
+                <tr><td>404</td><td><code>year_unavailable</code></td><td>No hay datos preparados para ese año.</td></tr>
+                <tr><td>422</td><td><code>level_not_allowed</code></td><td>El indicador no se publica a ese nivel (p. ej. pobreza extrema por departamento).</td></tr>
+                <tr><td>400</td><td><code>invalid_level</code></td><td>El ámbito no es un nivel de inferencia válido.</td></tr>
               </tbody>
             </table>
 
@@ -160,21 +158,21 @@ export default function Documentacion({ meta }) {
           {/* 4 · Indicadores (en vivo) */}
           <section id="indicadores" className="doc-sec">
             <h2>Indicadores</h2>
-            <p>Catálogo actual del servicio ({catalogo.length} indicadores). Se genera desde <code>/indicadores</code>.</p>
+            <p>Catálogo actual del servicio ({catalog.length} indicadores). Se genera desde <code>/indicators</code>.</p>
             <div className="tablebox">
               <table className="doc-table">
                 <thead>
                   <tr><th>Indicador</th><th>Módulo</th><th>Tipo</th><th>Unidad</th><th>Cruzable</th><th>Ámbitos</th></tr>
                 </thead>
                 <tbody>
-                  {catalogo.map((c) => (
+                  {catalog.map((c) => (
                     <tr key={c.id}>
-                      <td>{c.titulo}<br /><span className="doc-muted doc-mono">{c.id}</span></td>
-                      <td>{c.modulo === "vivienda" ? "Vivienda" : "Sumaria"}</td>
-                      <td>{c.tipo}</td>
-                      <td>{c.unidad_peso || c.formato}</td>
-                      <td>{c.cruzable ? "Sí" : "—"}</td>
-                      <td>{(c.ambitos_permitidos || []).map((a) => AMB_LABEL[a] || a).join(", ")}</td>
+                      <td>{c.title}<br /><span className="doc-muted doc-mono">{c.id}</span></td>
+                      <td>{c.module === "vivienda" ? "Vivienda" : "Sumaria"}</td>
+                      <td>{c.type}</td>
+                      <td>{c.weight_unit || c.format}</td>
+                      <td>{c.crossable ? "Sí" : "—"}</td>
+                      <td>{(c.levels_allowed || []).map((a) => LEVEL_LABEL[a] || a).join(", ")}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -189,7 +187,7 @@ export default function Documentacion({ meta }) {
               <li><b>Diseño muestral:</b> <code>svydesign(ids=~conglome, strata=~estrato, weights=peso, nest=TRUE)</code>; varianza por linealización de Taylor.</li>
               <li><b>Pesos:</b> indicadores de hogar usan <code>factor07</code>; indicadores de persona (pobreza, gasto) usan <code>factor07 × mieperho</code>.</li>
               <li><b>Universo:</b> entrevistas realizadas (RESULT ∈ {"{1,2}"}); Sumaria es la espina del merge con Vivienda por <code>conglome+vivienda+hogar</code>.</li>
-              <li><b>Umbral referencial:</b> CV &gt; 15% marca la cifra como referencial.</li>
+              <li><b>Umbral referencial:</b> CV &gt; 15% marca la cifra como referencial (<code>unreliable: true</code>).</li>
               <li><b>Ámbitos válidos:</b> nacional, área (urbano/rural), región natural (costa/sierra/selva) y departamento. No se admiten distritos.</li>
             </ul>
           </section>

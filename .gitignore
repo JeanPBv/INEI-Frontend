@@ -16,3 +16,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# Scripts locales de arranque (no se suben; en el repo va la guía del README)
+*.bat

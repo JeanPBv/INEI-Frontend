@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Sidebar from "./layout/Sidebar.jsx";
 import TopBar from "./layout/TopBar.jsx";
-import { getCatalogo, getAnios } from "./lib/api.js";
+import { getCatalog, getYears } from "./lib/api.js";
 import Consulta from "./views/Consulta.jsx";
 import Mapa from "./views/Mapa.jsx";
 import Datos from "./views/Datos.jsx";
@@ -15,19 +15,19 @@ export default function App() {
   const [err, setErr] = useState(false);
 
   useEffect(() => {
-    Promise.all([getCatalogo(), getAnios()]).then(([catalogo, anios]) => {
-      if (!catalogo.length) { setErr(true); return; }
+    Promise.all([getCatalog(), getYears()]).then(([catalog, years]) => {
+      if (!catalog.length) { setErr(true); return; }
       setMeta({
-        catalogo,
-        anios: anios.length ? anios
-          : [{ anio: 2024, version: "v20261025", modulos: ["vivienda", "sumaria"], hogares: 33691, estado: "validado" }],
+        catalog,
+        years: years.length ? years
+          : [{ year: 2024, version: "v20261025", modules: ["vivienda", "sumaria"], households: 33691, status: "validado" }],
       });
     }).catch(() => setErr(true));
   }, []);
 
   return (
     <div className="shell">
-      <Sidebar anios={meta?.anios} />
+      <Sidebar years={meta?.years} />
       <div className="main">
         <TopBar />
         {err ? (
@@ -46,8 +46,8 @@ export default function App() {
             <Route path="/consulta" element={<Consulta meta={meta} />} />
             <Route path="/mapa" element={<Mapa meta={meta} />} />
             <Route path="/datos" element={<Datos meta={meta} />} />
-            <Route path="/comparar" element={<Proximamente titulo="Comparar / Tendencia" desc="Comparar un indicador entre años o ámbitos" />} />
-            <Route path="/catalogo" element={<Proximamente titulo="Catálogo" desc="Ficha de cada indicador (definición, variable, módulo, unidad)" />} />
+            <Route path="/comparar" element={<Proximamente title="Comparar / Tendencia" desc="Comparar un indicador entre años o ámbitos" />} />
+            <Route path="/catalogo" element={<Proximamente title="Catálogo" desc="Ficha de cada indicador (definición, variable, módulo, unidad)" />} />
             <Route path="/docs" element={<Documentacion meta={meta} />} />
             <Route path="*" element={<Navigate to="/consulta" replace />} />
           </Routes>

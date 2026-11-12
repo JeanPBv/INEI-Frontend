@@ -1,19 +1,19 @@
 // Gráficos con ECharts: barras apiladas Sí/No (proporciones), barras simples
-// (promedios/totales) y mapa coroplético del Perú. Sin bigotes de IC.
+// (promedios/totales) y mapa coroplético del Perú.
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import * as echarts from "echarts";
 import { useTheme } from "../lib/theme.jsx";
-import { POBREZA_VAR } from "../lib/constants.js";
-import { cssVar, n1, n0, fmtValor, nivelBonito, aGeoNombre } from "../lib/format.js";
+import { POVERTY_VAR } from "../lib/constants.js";
+import { cssVar, n1, n0, fmtValue, prettyLevel, toGeoName } from "../lib/format.js";
 
 // Color del tramo "Sí" según calidad / condición de pobreza.
-function colorSi(row, cruce) {
-  if (cruce) {
-    const cond = String(row.nivel).split(" / ")[0];
-    return cssVar(POBREZA_VAR[cond] || "--bar");
+function colorYes(row, cross) {
+  if (cross) {
+    const cond = String(row.level).split(" / ")[0];
+    return cssVar(POVERTY_VAR[cond] || "--bar");
   }
-  return cssVar(row.referencial ? "--bar-ref" : "--bar");
+  return cssVar(row.unreliable ? "--bar-ref" : "--bar");
 }
 
 function tipCss() {
@@ -28,33 +28,33 @@ function tipCss() {
 const MONO = "'IBM Plex Mono', monospace";
 
 // ---------- Barras apiladas 100% Sí/No (indicadores de proporción) ----------
-export function ProportionBarChart({ rows, cruce }) {
+export function ProportionBarChart({ rows, cross }) {
   const { theme } = useTheme();
-  const sorted = useMemo(() => [...rows].sort((a, b) => b.estimacion - a.estimacion), [rows]);
+  const sorted = useMemo(() => [...rows].sort((a, b) => b.estimate - a.estimate), [rows]);
 
   const option = useMemo(() => {
-    const cats = sorted.map((r) => nivelBonito(String(r.nivel).replace(/^.+ \/ /, "")));
+    const cats = sorted.map((r) => prettyLevel(String(r.level).replace(/^.+ \/ /, "")));
     const byCat = Object.fromEntries(sorted.map((r, i) => [i, r]));
-    const si = sorted.map((r) => ({
-      value: +r.estimacion,
-      ref: r.referencial,
+    const yes = sorted.map((r) => ({
+      value: +r.estimate,
+      ref: r.unreliable,
       itemStyle: {
-        color: colorSi(r, cruce),
+        color: colorYes(r, cross),
         borderColor: cssVar("--surface"),
         borderWidth: 2,
-        ...(r.referencial ? { borderColor: cssVar("--warn-line"), borderWidth: 1.4, borderType: "dashed" } : {}),
+        ...(r.unreliable ? { borderColor: cssVar("--warn-line"), borderWidth: 1.4, borderType: "dashed" } : {}),
       },
     }));
-    const no = sorted.map((r) => 100 - r.estimacion);
+    const no = sorted.map((r) => 100 - r.estimate);
     return {
       grid: { left: 8, right: 56, top: 8, bottom: 28, containLabel: true },
       tooltip: {
         trigger: "axis", axisPointer: { type: "shadow" }, ...tipCss(),
         formatter: (ps) => {
           const r = byCat[ps[0].dataIndex];
-          const q = r.referencial ? "Referencial (CV > 15%)" : "Confiable";
-          return `<b>${nivelBonito(r.nivel)}</b><br/>Sí: <b>${n1(r.estimacion)}%</b> · No: <b>${n1(100 - r.estimacion)}%</b>`
-            + `<br/>IC 95% [${n1(r.ic_inferior)} – ${n1(r.ic_superior)}] · ${q}`;
+          const q = r.unreliable ? "Referencial (CV > 15%)" : "Confiable";
+          return `<b>${prettyLevel(r.level)}</b><br/>Sí: <b>${n1(r.estimate)}%</b> · No: <b>${n1(100 - r.estimate)}%</b>`
+            + `<br/>IC 95% [${n1(r.ci_lower)} – ${n1(r.ci_upper)}] · ${q}`;
         },
       },
       legend: { show: false },
@@ -71,7 +71,7 @@ export function ProportionBarChart({ rows, cruce }) {
       },
       series: [
         {
-          name: "Sí", type: "bar", stack: "t", data: si, barMaxWidth: 26,
+          name: "Sí", type: "bar", stack: "t", data: yes, barMaxWidth: 26,
           label: {
             show: true, position: "insideRight", color: "#fff",
             fontFamily: MONO, fontWeight: 600, fontSize: 11.5,
@@ -82,18 +82,18 @@ export function ProportionBarChart({ rows, cruce }) {
           itemStyle: { color: cssVar("--no") } },
       ],
     };
-  }, [sorted, cruce, theme]);
+  }, [sorted, cross, theme]);
 
   const h = Math.max(220, sorted.length * 30 + 48);
   return <ReactECharts option={option} style={{ height: h }} notMerge />;
 }
 
 // ---------- Barras simples (promedios en S/, totales en conteo) ----------
-export function SimpleBarChart({ rows, formato }) {
+export function SimpleBarChart({ rows, format }) {
   const { theme } = useTheme();
-  const sorted = useMemo(() => [...rows].sort((a, b) => b.estimacion - a.estimacion), [rows]);
+  const sorted = useMemo(() => [...rows].sort((a, b) => b.estimate - a.estimate), [rows]);
   const option = useMemo(() => {
-    const cats = sorted.map((r) => nivelBonito(r.nivel));
+    const cats = sorted.map((r) => prettyLevel(r.level));
     const byCat = Object.fromEntries(sorted.map((r, i) => [i, r]));
     return {
       grid: { left: 8, right: 80, top: 8, bottom: 28, containLabel: true },
@@ -101,14 +101,14 @@ export function SimpleBarChart({ rows, formato }) {
         trigger: "axis", axisPointer: { type: "shadow" }, ...tipCss(),
         formatter: (ps) => {
           const r = byCat[ps[0].dataIndex];
-          const q = r.referencial ? "Referencial (CV > 15%)" : "Confiable";
-          return `<b>${nivelBonito(r.nivel)}</b><br/>${fmtValor(r.estimacion, formato)}`
-            + `<br/>IC 95% [${fmtValor(r.ic_inferior, formato)} – ${fmtValor(r.ic_superior, formato)}] · ${q}`;
+          const q = r.unreliable ? "Referencial (CV > 15%)" : "Confiable";
+          return `<b>${prettyLevel(r.level)}</b><br/>${fmtValue(r.estimate, format)}`
+            + `<br/>IC 95% [${fmtValue(r.ci_lower, format)} – ${fmtValue(r.ci_upper, format)}] · ${q}`;
         },
       },
       xAxis: {
         type: "value", axisLabel: { color: cssVar("--muted"),
-          formatter: (v) => (formato === "soles" ? `S/ ${n0(v)}` : n0(v)) },
+          formatter: (v) => (format === "soles" ? `S/ ${n0(v)}` : n0(v)) },
         splitLine: { lineStyle: { color: cssVar("--grid") } },
       },
       yAxis: {
@@ -120,24 +120,24 @@ export function SimpleBarChart({ rows, formato }) {
       series: [{
         type: "bar", barMaxWidth: 26,
         data: sorted.map((r) => ({
-          value: +r.estimacion,
-          itemStyle: { color: cssVar(r.referencial ? "--bar-ref" : "--bar"), borderRadius: [0, 3, 3, 0] },
+          value: +r.estimate,
+          itemStyle: { color: cssVar(r.unreliable ? "--bar-ref" : "--bar"), borderRadius: [0, 3, 3, 0] },
         })),
         label: {
           show: true, position: "right", color: cssVar("--ink-2"),
           fontFamily: MONO, fontWeight: 600, fontSize: 11.5,
-          formatter: (p) => fmtValor(p.value, formato) + (sorted[p.dataIndex].referencial ? "  ▲" : ""),
+          formatter: (p) => fmtValue(p.value, format) + (sorted[p.dataIndex].unreliable ? "  ▲" : ""),
         },
       }],
     };
-  }, [sorted, formato, theme]);
+  }, [sorted, format, theme]);
   const h = Math.max(200, sorted.length * 34 + 48);
   return <ReactECharts option={option} style={{ height: h }} notMerge />;
 }
 
 // ---------- Mapa coroplético del Perú (departamentos) ----------
 let GEO_PROMISE = null;
-function cargarGeo() {
+function loadGeo() {
   if (!GEO_PROMISE) {
     GEO_PROMISE = fetch(`${import.meta.env.BASE_URL}geo/peru_departamentos.geojson`)
       .then((r) => r.json())
@@ -147,20 +147,20 @@ function cargarGeo() {
   return GEO_PROMISE;
 }
 
-export function ChoroplethMap({ rows, formato, hot, setHot }) {
+export function ChoroplethMap({ rows, format, hot, setHot }) {
   const { theme } = useTheme();
   const [ready, setReady] = useState(false);
   const ref = useRef(null);
-  useEffect(() => { cargarGeo().then(setReady); }, []);
+  useEffect(() => { loadGeo().then(setReady); }, []);
 
   const byGeo = useMemo(
-    () => Object.fromEntries(rows.map((r) => [aGeoNombre(r.nivel), r])), [rows]);
+    () => Object.fromEntries(rows.map((r) => [toGeoName(r.level), r])), [rows]);
 
   const option = useMemo(() => {
-    const vals = rows.map((r) => r.estimacion);
-    const esPct = formato === "porcentaje";
+    const vals = rows.map((r) => r.estimate);
+    const isPct = format === "porcentaje";
     const qc = ["--q1", "--q2", "--q3", "--q4", "--q5"].map(cssVar);
-    const visualMap = esPct
+    const visualMap = isPct
       ? {
           type: "piecewise", left: 8, bottom: 8, showLabel: true,
           pieces: [
@@ -176,7 +176,7 @@ export function ChoroplethMap({ rows, formato, hot, setHot }) {
           type: "continuous", left: 8, bottom: 8, calculable: true,
           min: Math.floor(Math.min(...vals)), max: Math.ceil(Math.max(...vals)),
           inRange: { color: qc },
-          text: [formato === "soles" ? "S/ más" : "más", "menos"],
+          text: [format === "soles" ? "S/ más" : "más", "menos"],
           textStyle: { color: cssVar("--ink-2"), fontSize: 11 },
         };
     return {
@@ -185,44 +185,44 @@ export function ChoroplethMap({ rows, formato, hot, setHot }) {
         formatter: (p) => {
           const r = byGeo[p.name];
           if (!r) return `<b>${p.name}</b><br/>sin dato`;
-          const q = r.referencial ? "Referencial (CV > 15%)" : "Confiable";
-          return `<b>${nivelBonito(r.nivel)}</b><br/>${fmtValor(r.estimacion, formato)}`
-            + `<br/>IC 95% [${fmtValor(r.ic_inferior, formato)} – ${fmtValor(r.ic_superior, formato)}]`
+          const q = r.unreliable ? "Referencial (CV > 15%)" : "Confiable";
+          return `<b>${prettyLevel(r.level)}</b><br/>${fmtValue(r.estimate, format)}`
+            + `<br/>IC 95% [${fmtValue(r.ci_lower, format)} – ${fmtValue(r.ci_upper, format)}]`
             + `<br/>CV ${n1(r.cv)}% · ${q}`;
         },
       },
       visualMap,
       series: [{
         type: "map", map: "peru_dep", nameProperty: "NOMBDEP", roam: false,
-        aspectScale: 1,                               // proporciones naturales (el 0.75 por defecto lo "adelgaza")
-        layoutCenter: ["50%", "50%"], layoutSize: "98%",  // centra y llena la caja
+        aspectScale: 1,
+        layoutCenter: ["50%", "50%"], layoutSize: "98%",
         itemStyle: { borderColor: cssVar("--map-line"), borderWidth: 1, areaColor: cssVar("--surface-2") },
         emphasis: {
           itemStyle: { borderColor: cssVar("--ink"), borderWidth: 1.8 },
           label: { show: true, fontWeight: 700 },
         },
         select: { disabled: true },
-        label: {                                      // etiqueta con el nombre del departamento
+        label: {
           show: true, fontSize: 9, fontWeight: 600, color: "#fff",
           textBorderColor: "rgba(0,0,0,.55)", textBorderWidth: 2.6,
         },
         data: rows.map((r) => ({
-          name: aGeoNombre(r.nivel),
-          value: r.estimacion,
-          itemStyle: r.referencial
+          name: toGeoName(r.level),
+          value: r.estimate,
+          itemStyle: r.unreliable
             ? { borderColor: cssVar("--warn-line"), borderWidth: 1.5, borderType: "dashed" }
             : {},
         })),
       }],
     };
-  }, [rows, formato, theme, byGeo]);
+  }, [rows, format, theme, byGeo]);
 
   // Resalta en el mapa el departamento activo del ranking.
   useEffect(() => {
     const inst = ref.current?.getEchartsInstance?.();
     if (!inst) return;
     inst.dispatchAction({ type: "downplay", seriesIndex: 0 });
-    if (hot) inst.dispatchAction({ type: "highlight", seriesIndex: 0, name: aGeoNombre(hot) });
+    if (hot) inst.dispatchAction({ type: "highlight", seriesIndex: 0, name: toGeoName(hot) });
   }, [hot, ready]);
 
   if (!ready) return <div className="sk" style={{ height: 460 }} />;
@@ -233,7 +233,7 @@ export function ChoroplethMap({ rows, formato, hot, setHot }) {
       style={{ height: 520 }}
       notMerge
       onEvents={{
-        mouseover: (e) => { const r = byGeo[e.name]; if (r && setHot) setHot(r.nivel); },
+        mouseover: (e) => { const r = byGeo[e.name]; if (r && setHot) setHot(r.level); },
         mouseout: () => setHot && setHot(null),
       }}
     />

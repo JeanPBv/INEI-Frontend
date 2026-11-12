@@ -1,4 +1,4 @@
-# front — Portal del servicio ENAHO
+# Front — Portal del servicio ENAHO
 
 Portal web (React + Vite + ECharts) que consume la API del back y muestra los indicadores de la
 ENAHO: tarjeta KPI, barras Sí/No, mapa coroplético del Perú, cruces por pobreza, tabla ordenable y
@@ -13,16 +13,26 @@ React Router) lo instala `npm install`.
 
 ## Instalar y levantar
 
-Desde `front/`:
+**1. Consigue el proyecto.** Clónalo con Git (o descarga el `.zip` desde GitHub y descomprímelo), y
+abre una terminal dentro de la carpeta:
+
+```bash
+git clone https://github.com/JeanPBv/INEI-Frontend.git
+cd INEI-Frontend
+```
+
+Esa carpeta `INEI-Frontend` es el portal; en esta guía la llamamos `front/`. Todos los comandos se
+corren **desde ahí**. (Si lo bajaste como `.zip`, descomprímelo y entra a esa carpeta.)
+
+**2. Instala las dependencias y levanta el portal:**
 
 ```bash
 npm install
 npm run dev
 ```
 
-La primera vez, `npm install` baja las dependencias (un par de minutos). En Windows también puedes
-hacer doble clic en `start_front.bat`, que instala si hace falta y levanta. Abre
-`http://127.0.0.1:5173`.
+La primera vez, `npm install` baja las dependencias (un par de minutos). Cuando el servidor
+arranque, abre `http://127.0.0.1:5173`.
 
 Levanta primero el back y luego el front. Si abres el front sin el back, verás el aviso
 "No se pudo conectar con la API".

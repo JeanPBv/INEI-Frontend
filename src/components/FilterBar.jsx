@@ -1,83 +1,82 @@
-// Barra de filtros (sobre el contenido, NO en el sidebar).
-// Indicador · Ámbito · Año · Cruce · Consultar. Estado controlado por la vista.
+// Barra de filtros: Indicador · Nivel · Año · Cruce · Consultar.
+// El estado lo controla la vista.
 import { useNavigate } from "react-router-dom";
 import { Search, Loader2 } from "lucide-react";
-import { AMBITO_DESC, AMBITO_ORDEN } from "../lib/constants.js";
+import { LEVEL_DESC, LEVEL_ORDER } from "../lib/constants.js";
 
-const UNIDAD_ETQ = { porcentaje: "%", soles: "S/", conteo: "conteo" };
+const UNIT_TAG = { porcentaje: "%", soles: "S/", conteo: "conteo" };
 
 export default function FilterBar({
-  catalogo, anios, value, onChange, onConsultar, loading,
-  lockAmbito, errorAmbito,
+  catalog, years, value, onChange, onSubmit, loading,
+  lockLevel, errorLevel,
 }) {
   const navigate = useNavigate();
-  const ind = catalogo.find((c) => c.id === value.indicador);
-  const permitidos = ind?.ambitos_permitidos || AMBITO_ORDEN;
-  const cruzable = !!ind?.cruzable;
+  const ind = catalog.find((c) => c.id === value.indicator);
+  const allowed = ind?.levels_allowed || LEVEL_ORDER;
+  const crossable = !!ind?.crossable;
 
-  // Indicadores agrupados por módulo.
-  const porModulo = catalogo.reduce((acc, c) => {
-    (acc[c.modulo] = acc[c.modulo] || []).push(c);
+  const byModule = catalog.reduce((acc, c) => {
+    (acc[c.module] = acc[c.module] || []).push(c);
     return acc;
   }, {});
 
   const setYear = (v) => {
     if (v === "__add") { navigate("/datos"); return; }
-    onChange({ anio: Number(v) });
+    onChange({ year: Number(v) });
   };
 
   return (
     <div className="filterbar">
       <div className="field grow">
         <label htmlFor="f-ind">Indicador</label>
-        <select id="f-ind" className="ctrl" value={value.indicador}
-          onChange={(e) => onChange({ indicador: e.target.value })}>
+        <select id="f-ind" className="ctrl" value={value.indicator}
+          onChange={(e) => onChange({ indicator: e.target.value })}>
           <option value="">— Elige un indicador —</option>
-          {Object.entries(porModulo).map(([mod, items]) => (
+          {Object.entries(byModule).map(([mod, items]) => (
             <optgroup key={mod} label={mod === "vivienda" ? "Vivienda" : "Sumaria"}>
               {items.map((c) => (
-                <option key={c.id} value={c.id}>{c.titulo} · {UNIDAD_ETQ[c.unidad]}</option>
+                <option key={c.id} value={c.id}>{c.title} · {UNIT_TAG[c.unit]}</option>
               ))}
             </optgroup>
           ))}
         </select>
       </div>
 
-      {/* En el mapa (lockAmbito) el ámbito es siempre "departamento": se oculta el selector por innecesario. */}
-      {!lockAmbito && (
+      {/* En el mapa (lockLevel) el nivel es siempre "departamento": se oculta el selector. */}
+      {!lockLevel && (
         <div className="field">
-          <label htmlFor="f-amb">Ámbito geográfico</label>
-          <select id="f-amb" className={`ctrl ${errorAmbito ? "invalid" : ""}`}
-            value={value.ambito}
-            aria-invalid={errorAmbito ? "true" : undefined}
-            onChange={(e) => onChange({ ambito: e.target.value })}>
-            {AMBITO_ORDEN.map((a) => (
-              <option key={a} value={a} disabled={ind && !permitidos.includes(a)}>
-                {AMBITO_DESC[a] ? `${a === "region_natural" ? "Región natural" : a[0].toUpperCase() + a.slice(1)} — ${AMBITO_DESC[a]}` : a}
+          <label htmlFor="f-lvl">Ámbito geográfico</label>
+          <select id="f-lvl" className={`ctrl ${errorLevel ? "invalid" : ""}`}
+            value={value.level}
+            aria-invalid={errorLevel ? "true" : undefined}
+            onChange={(e) => onChange({ level: e.target.value })}>
+            {LEVEL_ORDER.map((a) => (
+              <option key={a} value={a} disabled={ind && !allowed.includes(a)}>
+                {LEVEL_DESC[a] ? `${a === "region_natural" ? "Región natural" : a[0].toUpperCase() + a.slice(1)} — ${LEVEL_DESC[a]}` : a}
               </option>
             ))}
           </select>
-          {errorAmbito && <span className="field-err">Ese ámbito no se publica para este indicador.</span>}
+          {errorLevel && <span className="field-err">Ese ámbito no se publica para este indicador.</span>}
         </div>
       )}
 
       <div className="field">
-        <label htmlFor="f-anio">Año</label>
-        <select id="f-anio" className="ctrl" value={value.anio} onChange={(e) => setYear(e.target.value)}>
-          {anios.filter((a) => a.estado === "validado").map((a) => (
-            <option key={a.anio} value={a.anio}>{a.anio}</option>
+        <label htmlFor="f-year">Año</label>
+        <select id="f-year" className="ctrl" value={value.year} onChange={(e) => setYear(e.target.value)}>
+          {years.filter((a) => a.status === "validado").map((a) => (
+            <option key={a.year} value={a.year}>{a.year}</option>
           ))}
           <option value="__add" className="yr-add">＋ Agregar año…</option>
         </select>
       </div>
 
-      {cruzable && !lockAmbito && (
+      {crossable && !lockLevel && (
         <div className="field">
           <label>Cruce</label>
           <div className="switch-field">
-            <button type="button" role="switch" aria-checked={value.cruce}
-              className={`switch ${value.cruce ? "on" : ""}`}
-              onClick={() => onChange({ cruce: !value.cruce })}>
+            <button type="button" role="switch" aria-checked={value.cross}
+              className={`switch ${value.cross ? "on" : ""}`}
+              onClick={() => onChange({ cross: !value.cross })}>
               <span className="knob" />
             </button>
             <span style={{ fontSize: 13 }}>Cruzar por condición de pobreza</span>
@@ -86,7 +85,7 @@ export default function FilterBar({
       )}
 
       <div className="filter-actions">
-        <button className="btn btn-primary" disabled={!value.indicador || loading} onClick={onConsultar}>
+        <button className="btn btn-primary" disabled={!value.indicator || loading} onClick={onSubmit}>
           {loading ? <Loader2 size={16} className="spin" /> : <Search size={16} />}
           {loading ? "Consultando…" : "Consultar"}
         </button>
