@@ -2,6 +2,7 @@
 // indicadores y años se alimentan en vivo del catálogo (/indicators, /years).
 import { useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../lib/api.js";
+import { MODULE_LABEL } from "../lib/constants.js";
 
 const SECTIONS = [
   { id: "intro", label: "Introducción" },
@@ -168,7 +169,7 @@ export default function Documentacion({ meta }) {
                   {catalog.map((c) => (
                     <tr key={c.id}>
                       <td>{c.title}<br /><span className="doc-muted doc-mono">{c.id}</span></td>
-                      <td>{c.module === "vivienda" ? "Vivienda" : "Sumaria"}</td>
+                      <td>{MODULE_LABEL[c.module] || c.module}</td>
                       <td>{c.type}</td>
                       <td>{c.weight_unit || c.format}</td>
                       <td>{c.crossable ? "Sí" : "—"}</td>

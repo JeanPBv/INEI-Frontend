@@ -33,3 +33,9 @@ export const VIEWS = [
 
 // Etiqueta larga de unidad (para el chip de cabecera).
 export const UNIT_LABEL = { porcentaje: "Porcentaje (%)", soles: "Soles (S/)", conteo: "Hogares (conteo)" };
+
+// Nombre mostrado de cada módulo de la ENAHO (para agrupar indicadores).
+export const MODULE_LABEL = {
+  vivienda: "Vivienda", sumaria: "Sumaria",
+  educacion: "Educación", salud: "Salud", empleo: "Empleo",
+};
