@@ -2,7 +2,7 @@
 // El estado lo controla la vista.
 import { useNavigate } from "react-router-dom";
 import { Search, Loader2 } from "lucide-react";
-import { LEVEL_DESC, LEVEL_ORDER } from "../lib/constants.js";
+import { LEVEL_DESC, LEVEL_ORDER, MODULE_LABEL } from "../lib/constants.js";
 
 const UNIT_TAG = { porcentaje: "%", soles: "S/", conteo: "conteo" };
 
@@ -33,7 +33,7 @@ export default function FilterBar({
           onChange={(e) => onChange({ indicator: e.target.value })}>
           <option value="">— Elige un indicador —</option>
           {Object.entries(byModule).map(([mod, items]) => (
-            <optgroup key={mod} label={mod === "vivienda" ? "Vivienda" : "Sumaria"}>
+            <optgroup key={mod} label={MODULE_LABEL[mod] || mod}>
               {items.map((c) => (
                 <option key={c.id} value={c.id}>{c.title} · {UNIT_TAG[c.unit]}</option>
               ))}
