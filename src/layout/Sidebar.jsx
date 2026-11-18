@@ -6,6 +6,7 @@ import {
   PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import { VIEWS } from "../lib/constants.js";
+import logoMark from "../assets/logo-mark.png";
 
 const ICONS = { BarChart3, Map, TrendingUp, BookOpen, Database, FileCode };
 
@@ -23,8 +24,9 @@ export default function Sidebar({ years }) {
   return (
     <aside className={`sidebar ${collapsed ? "collapsed" : ""}`}>
       <div className="sb-brand">
-        <div className="sb-logo">EN</div>
-        {!collapsed && <div><b>Servicio ENAHO</b><br /><span>Indicadores con diseño muestral</span></div>}
+        <img className="sb-logo" src={logoMark} width="40" height="40"
+          alt={collapsed ? "ENAHO Analytics" : ""} aria-hidden={collapsed ? undefined : "true"} />
+        {!collapsed && <div><b>ENAHO Analytics</b><br /><span>Plataforma de análisis e indicadores socioeconómicos</span></div>}
       </div>
       <nav className="sb-nav">
         {groups.map((g) => (

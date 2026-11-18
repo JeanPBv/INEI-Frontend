@@ -1,85 +1,76 @@
 // Barra de filtros: Indicador · Nivel · Año · Cruce · Consultar.
 // El estado lo controla la vista.
-import { useNavigate } from "react-router-dom";
 import { Search, Loader2 } from "lucide-react";
-import { LEVEL_DESC, LEVEL_ORDER, MODULE_LABEL } from "../lib/constants.js";
+import { LEVEL_ORDER, MODULE_LABEL } from "../lib/constants.js";
+import Dropdown from "./Dropdown.jsx";
 
 const UNIT_TAG = { porcentaje: "%", soles: "S/", conteo: "conteo" };
+// Etiqueta corta de cada ámbito (sin descripciones largas al costado).
+const LEVEL_SHORT = {
+  nacional: "Nacional", area: "Área (urbano/rural)",
+  region_natural: "Región natural", departamento: "Departamentos",
+};
 
 export default function FilterBar({
   catalog, years, value, onChange, onSubmit, loading,
   lockLevel, errorLevel,
 }) {
-  const navigate = useNavigate();
   const ind = catalog.find((c) => c.id === value.indicator);
   const allowed = ind?.levels_allowed || LEVEL_ORDER;
   const crossable = !!ind?.crossable;
 
+  // Indicadores agrupados por módulo, en formato de opciones del Dropdown.
   const byModule = catalog.reduce((acc, c) => {
     (acc[c.module] = acc[c.module] || []).push(c);
     return acc;
   }, {});
+  const indGroups = Object.entries(byModule).map(([mod, items]) => ({
+    label: MODULE_LABEL[mod] || mod,
+    options: items.map((c) => ({ value: c.id, label: c.title, tag: UNIT_TAG[c.unit] })),
+  }));
 
-  const setYear = (v) => {
-    if (v === "__add") { navigate("/datos"); return; }
-    onChange({ year: Number(v) });
-  };
+  const levelOpts = LEVEL_ORDER.map((a) => ({
+    value: a, label: LEVEL_SHORT[a] || a, disabled: ind && !allowed.includes(a),
+  }));
+  const yearOpts = years.filter((a) => a.status === "validado")
+    .map((a) => ({ value: a.year, label: String(a.year) }));
 
   return (
     <div className="filterbar">
       <div className="field grow">
         <label htmlFor="f-ind">Indicador</label>
-        <select id="f-ind" className="ctrl" value={value.indicator}
-          onChange={(e) => onChange({ indicator: e.target.value })}>
-          <option value="">— Elige un indicador —</option>
-          {Object.entries(byModule).map(([mod, items]) => (
-            <optgroup key={mod} label={MODULE_LABEL[mod] || mod}>
-              {items.map((c) => (
-                <option key={c.id} value={c.id}>{c.title} · {UNIT_TAG[c.unit]}</option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
+        <Dropdown id="f-ind" ariaLabel="Indicador" value={value.indicator}
+          groups={indGroups} placeholder="— Elige un indicador —"
+          onChange={(v) => onChange({ indicator: v })} />
       </div>
 
       {/* En el mapa (lockLevel) el nivel es siempre "departamento": se oculta el selector. */}
       {!lockLevel && (
         <div className="field">
           <label htmlFor="f-lvl">Ámbito geográfico</label>
-          <select id="f-lvl" className={`ctrl ${errorLevel ? "invalid" : ""}`}
-            value={value.level}
-            aria-invalid={errorLevel ? "true" : undefined}
-            onChange={(e) => onChange({ level: e.target.value })}>
-            {LEVEL_ORDER.map((a) => (
-              <option key={a} value={a} disabled={ind && !allowed.includes(a)}>
-                {LEVEL_DESC[a] ? `${a === "region_natural" ? "Región natural" : a[0].toUpperCase() + a.slice(1)} — ${LEVEL_DESC[a]}` : a}
-              </option>
-            ))}
-          </select>
+          <Dropdown id="f-lvl" ariaLabel="Ámbito geográfico" value={value.level}
+            options={levelOpts} invalid={errorLevel}
+            onChange={(v) => onChange({ level: v })} />
           {errorLevel && <span className="field-err">Ese ámbito no se publica para este indicador.</span>}
         </div>
       )}
 
       <div className="field">
         <label htmlFor="f-year">Año</label>
-        <select id="f-year" className="ctrl" value={value.year} onChange={(e) => setYear(e.target.value)}>
-          {years.filter((a) => a.status === "validado").map((a) => (
-            <option key={a.year} value={a.year}>{a.year}</option>
-          ))}
-          <option value="__add" className="yr-add">＋ Agregar año…</option>
-        </select>
+        <Dropdown id="f-year" ariaLabel="Año" value={value.year}
+          options={yearOpts} onChange={(v) => onChange({ year: Number(v) })} />
       </div>
 
       {crossable && !lockLevel && (
         <div className="field">
-          <label>Cruce</label>
+          <label>Comparación</label>
           <div className="switch-field">
             <button type="button" role="switch" aria-checked={value.cross}
               className={`switch ${value.cross ? "on" : ""}`}
               onClick={() => onChange({ cross: !value.cross })}>
               <span className="knob" />
             </button>
-            <span style={{ fontSize: 13 }}>Cruzar por condición de pobreza</span>
+            <span style={{ fontSize: 13 }}>Comparar según condición de pobreza</span>
           </div>
         </div>
       )}
