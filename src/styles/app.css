@@ -184,23 +184,72 @@ select.ctrl { cursor: pointer; }
 .gap p { margin: 0; color: var(--ink-2); font-size: 13px; }
 .gap .dots { display: flex; align-items: center; gap: 2px; height: 40px; }
 
+/* Brechas por subámbito (cruce por pobreza) */
+.gaps { display: flex; flex-direction: column; gap: 12px; }
+.gap-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.gap-card { border: 1px solid var(--gap-line); background: var(--gap-bg); border-radius: 12px; padding: 14px 16px; }
+.gap-card.ref { border-color: var(--warn-line); background: var(--warn-row); }
+.gap-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.gap-sub { font-weight: 600; font-size: 15px; }
+.gap-val { font-size: 26px; font-weight: 600; line-height: 1.1; }
+.gap-val small { font-size: 14px; color: var(--muted); font-weight: 500; }
+.gap-arrow { margin-right: 4px; }
+.gap-dir { margin: 6px 0 0; color: var(--ink-2); font-size: 13px; }
+.gap-nums { display: flex; gap: 20px; margin: 12px 0 0; }
+.gap-nums > div { display: flex; flex-direction: column; gap: 2px; }
+.gap-nums dt { color: var(--muted); font-size: 12px; }
+.gap-nums dd { margin: 0; font-weight: 600; font-size: 14px; }
+.gap-note { color: var(--muted); font-size: 12px; margin: 2px 2px 0; line-height: 1.55; }
+.gap-search input { height: 36px; border: 1px solid var(--line-3); border-radius: 8px; background: var(--surface);
+  color: var(--ink); padding: 0 12px; font-size: 13px; width: 260px; max-width: 100%; }
+.gap-search input:focus { outline: none; border-color: var(--muted); }
+
 /* Chart container */
 .chart-wrap { width: 100%; }
 .chart-note { color: var(--muted); font-size: 12px; margin: 10px 2px 0; }
 
-/* Map + ranking */
-.mapgrid { display: flex; gap: 20px; flex-wrap: wrap; align-items: stretch; }
-.mapgrid .mapbox { flex: 1.35 1 440px; min-width: 360px; height: 520px; }
-.mapgrid .rankbox { flex: 1 1 320px; min-width: 280px; }
+/* Map + ranking (el mapa es el protagonista; panel lateral compacto) */
+.mapgrid { display: flex; gap: 22px; flex-wrap: wrap; align-items: stretch; }
+.mapgrid .mapbox { flex: 1.9 1 460px; min-width: 340px; height: 520px; }
+.mapgrid .rankbox { flex: 1 1 290px; min-width: 260px; }
+
+/* Panel lateral: departamentos destacados */
+.rank-title { margin: 2px 0 10px; font-size: 15px; }
+.rank-grouplbl { margin: 14px 2px 4px; font-size: 11px; font-weight: 600; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--muted); }
+.rank-grouplbl:first-of-type { margin-top: 2px; }
+.rank-hint { margin: 14px 2px 0; font-size: 12px; color: var(--muted); line-height: 1.5; }
+
 .rank { list-style: none; margin: 0; padding: 0; }
-.rank li { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center;
-  padding: 7px 10px; border-radius: 7px; cursor: default; }
-.rank li:hover, .rank li.hot { background: var(--row-hover); }
-.rank .pos { color: var(--muted); font-size: 12px; text-align: right; }
-.rank .nm { display: flex; align-items: center; gap: 7px; }
-.rank .bar { height: 7px; border-radius: 4px; background: var(--bar); }
-.rank .bar.ref { background: var(--bar-ref); }
-.rank .vl { font-weight: 600; }
+.rank-row { width: 100%; display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: center;
+  padding: 7px 10px; border: 0; border-radius: 7px; background: transparent; color: var(--ink);
+  font: inherit; text-align: left; cursor: pointer; }
+.rank-row:hover { background: var(--row-hover); }
+.rank-row.sel { background: var(--ci-bg); box-shadow: inset 2px 0 0 var(--focus); }
+.rank-row .pos { color: var(--muted); font-size: 12px; text-align: right; }
+.rank-row .nm { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.rank-row .vl { font-weight: 600; font-variant-numeric: tabular-nums; }
+.refmark { color: var(--warn-ink); font-size: 11px; }
+
+/* Ficha de detalle del departamento seleccionado */
+.detailcard { position: relative; }
+.detail-back { position: absolute; top: 0; right: 0; }
+.detail-name { margin: 0 44px 2px 0; font-size: 16px; }
+.detail-val { font-size: 30px; font-weight: 600; line-height: 1.1; margin: 2px 0 12px; }
+.detail-dl { display: grid; grid-template-columns: 1fr auto; gap: 8px 14px; margin: 0; }
+.detail-dl dt { color: var(--muted); font-size: 12.5px; }
+.detail-dl dd { margin: 0; font-weight: 600; font-size: 13px; text-align: right; }
+.detail-prec { margin: 14px 0 0; font-size: 12.5px; line-height: 1.5;
+  display: flex; align-items: flex-start; gap: 6px; }
+.detail-prec.ok { color: var(--ok-ink); }
+.detail-prec.warn { color: var(--warn-ink); }
+.detail-prec.muted { color: var(--muted); }
+
+@media (max-width: 760px) {
+  .mapgrid { gap: 16px; }
+  .mapgrid .mapbox { flex-basis: 100%; min-width: 0; height: 420px; }
+  .mapgrid .rankbox { flex-basis: 100%; min-width: 0; }
+}
 .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; font-size: 12px; color: var(--ink-2); }
 .legend i { display: inline-block; width: 16px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
 
@@ -248,6 +297,54 @@ pre.json { margin: 0; padding: 16px 18px; background: var(--code-bg); overflow-x
 .spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor;
   border-top-color: transparent; display: inline-block; animation: rot .8s linear infinite; }
 @keyframes rot { to { transform: rotate(360deg); } }
+.icon-spin { animation: rot .8s linear infinite; }
+
+/* Solo para lectores de pantalla */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+/* Carga: fila con spinner + texto discreto */
+.loadrow { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.load-note { margin: 2px 2px 0; }
+.skhead { display: flex; flex-direction: column; gap: 10px; }
+.skchips { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Skeleton del mapa (conserva el tamaño del contenedor) */
+.mapskel { position: relative; height: 100%; min-height: 320px; }
+.mapskel .sk { height: 100%; }
+.mapskel-lbl { position: absolute; inset: 0; display: grid; place-items: center; }
+
+/* Error de carga del mapa (sin skeleton infinito) */
+.mapfail { height: 100%; min-height: 320px; display: grid; place-items: center; text-align: center;
+  border: 1px dashed var(--line-3); border-radius: 12px; padding: 24px; }
+.mapfail p { color: var(--ink-2); font-size: 14px; margin: 0 0 12px; }
+
+/* Acciones y detalle técnico en estados de error */
+.err-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.err-tech { margin-top: 12px; }
+.err-tech summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+.err-tech pre { margin: 8px 0 0; background: var(--code-bg); border: 1px solid var(--line);
+  border-radius: 8px; padding: 10px 12px; font-family: var(--font-mono); font-size: 12px;
+  overflow-x: auto; color: var(--ink-2); white-space: pre-wrap; }
+
+/* Bienvenida (estado inicial de Consulta) */
+.welcome { max-width: 760px; margin: 32px auto 0; padding: 8px 0 4px; text-align: center; }
+.welcome-h { font-size: 24px; margin: 0 0 8px; line-height: 1.25; }
+.welcome-sub { color: var(--ink-2); font-size: 15px; line-height: 1.6; margin: 0 auto 24px; max-width: 580px; }
+.welcome-lbl { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--muted); margin: 0 0 10px; }
+.sugg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.sugg-card { display: flex; align-items: center; gap: 12px; text-align: left; width: 100%;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 15px;
+  cursor: pointer; color: var(--ink); transition: border-color .12s, background .12s; }
+.sugg-card:hover { border-color: var(--link); background: var(--surface-2); }
+.sugg-ic { flex: none; width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center;
+  background: var(--ci-bg); color: var(--ci-ink); }
+.sugg-tx { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.sugg-name { font-weight: 600; font-size: 14px; }
+.sugg-desc { color: var(--muted); font-size: 12.5px; line-height: 1.4; }
+.sugg-arrow { flex: none; color: var(--muted); }
+.sugg-card:hover .sugg-arrow { color: var(--link); }
 
 /* Datos / Años */
 .prose { max-width: 760px; color: var(--ink-2); }

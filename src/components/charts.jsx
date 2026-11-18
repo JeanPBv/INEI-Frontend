@@ -1,10 +1,12 @@
 // Gráficos con ECharts: barras apiladas Sí/No (proporciones), barras simples
 // (promedios/totales) y mapa coroplético del Perú.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import * as echarts from "echarts";
+import { RefreshCw } from "lucide-react";
+import { MapSkeleton } from "./skeletons.jsx";
 import { useTheme } from "../lib/theme.jsx";
-import { POVERTY_VAR } from "../lib/constants.js";
+import { POVERTY_VAR, POVERTY_ORDER } from "../lib/constants.js";
 import { cssVar, n1, n0, fmtValue, prettyLevel, toGeoName } from "../lib/format.js";
 
 // Color del tramo "Sí" según calidad / condición de pobreza.
@@ -27,14 +29,69 @@ function tipCss() {
 
 const MONO = "'IBM Plex Mono', monospace";
 
+// Separa el nivel de una celda del cruce "Condición / Área" en sus dos partes.
+// Sin cruce (o cruce nacional) devuelve el área vacía.
+function splitCross(level) {
+  const parts = String(level).split(" / ");
+  return parts.length > 1 ? { pov: parts[0], area: parts[1] } : { pov: parts[0], area: "" };
+}
+// Etiqueta legible de una celda del cruce: "No pobre · Urbano" (o solo "No pobre").
+function crossLabel(r) {
+  return r.area ? `${r.pov} · ${prettyLevel(r.area)}` : r.pov;
+}
+
+// Leyenda de color del cruce: cada tono = una condición de pobreza.
+function PovertyLegend() {
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16,
+                  margin: "0 2px 12px", fontSize: 12, color: cssVar("--muted") }}>
+      <span style={{ color: cssVar("--ink-2"), fontWeight: 600 }}>Condición de pobreza:</span>
+      {[...POVERTY_ORDER].reverse().map((p) => (
+        <span key={p} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <span style={{ width: 12, height: 12, borderRadius: 3, background: `var(${POVERTY_VAR[p]})` }} />
+          {p}
+        </span>
+      ))}
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <span style={{ width: 12, height: 12, borderRadius: 3, background: cssVar("--no"),
+                       border: `1px solid ${cssVar("--line")}` }} />
+        resto (No)
+      </span>
+    </div>
+  );
+}
+
 // Barras apiladas 100% Sí/No (indicadores de proporción)
 // onDrill(level, label): si se pasa, cada barra es clicable para abrir su desglose.
+// En el cruce por pobreza, las barras se agrupan por área y se etiquetan por
+// condición (el color codifica la condición, explicado en la leyenda).
 export function ProportionBarChart({ rows, cross, onDrill }) {
   const { theme } = useTheme();
-  const sorted = useMemo(() => [...rows].sort((a, b) => b.estimate - a.estimate), [rows]);
+
+  // Orden: sin cruce, por valor desc. Con cruce, agrupado por área (el grupo con
+  // más acceso arriba) y dentro de cada área No pobre → Pobre no extremo → Pobre extremo.
+  const sorted = useMemo(() => {
+    if (!cross) return [...rows].sort((a, b) => b.estimate - a.estimate);
+    const withMeta = rows.map((r) => ({ ...r, ...splitCross(r.level) }));
+    const areas = [...new Set(withMeta.map((r) => r.area))];
+    const areaScore = (a) => {
+      const np = withMeta.find((r) => r.area === a && r.pov === "No pobre");
+      const vals = withMeta.filter((r) => r.area === a).map((r) => r.estimate);
+      return np ? np.estimate : Math.max(...vals);
+    };
+    areas.sort((a, b) => areaScore(b) - areaScore(a));
+    const povRank = (p) => { const i = POVERTY_ORDER.indexOf(p); return i < 0 ? 99 : i; };
+    const out = [];
+    areas.forEach((a) => {
+      withMeta.filter((r) => r.area === a)
+        .sort((x, y) => povRank(y.pov) - povRank(x.pov))   // No pobre primero (arriba)
+        .forEach((r) => out.push(r));
+    });
+    return out;
+  }, [rows, cross]);
 
   const option = useMemo(() => {
-    const cats = sorted.map((r) => prettyLevel(String(r.level).replace(/^.+ \/ /, "")));
+    const cats = sorted.map((r) => cross ? r.level : prettyLevel(String(r.level).replace(/^.+ \/ /, "")));
     const byCat = Object.fromEntries(sorted.map((r, i) => [i, r]));
     const yes = sorted.map((r) => ({
       value: +r.estimate,
@@ -54,7 +111,8 @@ export function ProportionBarChart({ rows, cross, onDrill }) {
         formatter: (ps) => {
           const r = byCat[ps[0].dataIndex];
           const q = r.unreliable ? "Referencial (CV > 15%)" : "Confiable";
-          return `<b>${prettyLevel(r.level)}</b><br/>Sí: <b>${n1(r.estimate)}%</b> · No: <b>${n1(100 - r.estimate)}%</b>`
+          const head = cross ? crossLabel(r) : prettyLevel(r.level);
+          return `<b>${head}</b><br/>Sí: <b>${n1(r.estimate)}%</b> · No: <b>${n1(100 - r.estimate)}%</b>`
             + `<br/>IC 95% [${n1(r.ci_lower)} – ${n1(r.ci_upper)}] · ${q}`;
         },
       },
@@ -66,7 +124,20 @@ export function ProportionBarChart({ rows, cross, onDrill }) {
       },
       yAxis: {
         type: "category", data: cats, inverse: true,
-        axisLabel: { color: cssVar("--ink-2") },
+        axisLabel: {
+          color: cssVar("--ink-2"),
+          // En el cruce con área, etiqueta de dos líneas: área (atenuada) + condición.
+          formatter: cross
+            ? (val, idx) => {
+                const r = sorted[idx];
+                return r.area ? `{a|${prettyLevel(r.area)}}\n{p|${r.pov}}` : `{p|${r.pov}}`;
+              }
+            : undefined,
+          rich: cross ? {
+            a: { color: cssVar("--muted"), fontSize: 10, lineHeight: 13 },
+            p: { color: cssVar("--ink-2"), fontWeight: 600, fontSize: 12, lineHeight: 15 },
+          } : undefined,
+        },
         axisLine: { lineStyle: { color: cssVar("--line") } },
         axisTick: { show: false },
       },
@@ -87,11 +158,19 @@ export function ProportionBarChart({ rows, cross, onDrill }) {
     };
   }, [sorted, cross, theme, onDrill]);
 
-  const h = Math.max(220, sorted.length * 30 + 48);
+  const h = Math.max(220, sorted.length * (cross ? 40 : 30) + 48);
   const onEvents = onDrill
-    ? { click: (e) => { const r = sorted[e.dataIndex]; if (r) onDrill(r.level, prettyLevel(r.level)); } }
+    ? { click: (e) => {
+        const r = sorted[e.dataIndex];
+        if (r) onDrill(r.level, cross ? crossLabel(r) : prettyLevel(r.level));
+      } }
     : undefined;
-  return <ReactECharts option={option} style={{ height: h }} notMerge onEvents={onEvents} />;
+  return (
+    <>
+      {cross && <PovertyLegend />}
+      <ReactECharts option={option} style={{ height: h }} notMerge onEvents={onEvents} />
+    </>
+  );
 }
 
 // Desglose por categorías (distribución, % por etiqueta)
@@ -204,25 +283,48 @@ let GEO_PROMISE = null;
 function loadGeo() {
   if (!GEO_PROMISE) {
     GEO_PROMISE = fetch(`${import.meta.env.BASE_URL}geo/peru_departamentos.geojson`)
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then((geo) => { echarts.registerMap("peru_dep", geo); return true; })
-      .catch(() => false);
+      .catch(() => { GEO_PROMISE = null; return false; });   // permite reintentar
   }
   return GEO_PROMISE;
 }
 
-export function ChoroplethMap({ rows, format, hot, setHot }) {
+// Color de cada departamento según la MISMA escala del visualMap, para computar
+// el relleno del estado emphasis y que el hover no cambie el color del mapa
+// (solo el borde). Porcentaje = 5 clases; soles/conteo = gradiente continuo.
+function mapColor(value, format, mn, mx) {
+  const qc = ["--q1", "--q2", "--q3", "--q4", "--q5"].map(cssVar);
+  if (format === "porcentaje") {
+    if (value < 10) return qc[0];
+    if (value < 20) return qc[1];
+    if (value < 30) return qc[2];
+    if (value < 40) return qc[3];
+    return qc[4];
+  }
+  const t = mx > mn ? (value - mn) / (mx - mn) : 0;
+  return echarts.color.lerp(Math.max(0, Math.min(1, t)), qc);
+}
+
+export function ChoroplethMap({ rows, format, hot, setHot, selected, setSelected }) {
   const { theme } = useTheme();
-  const [ready, setReady] = useState(false);
+  // Estado del GeoJSON del mapa: loading | ok | error (con reintento, sin skeleton infinito).
+  const [geo, setGeo] = useState("loading");
   const ref = useRef(null);
-  useEffect(() => { loadGeo().then(setReady); }, []);
+  const loadIt = useCallback(() => {
+    setGeo("loading");
+    loadGeo().then((ok) => setGeo(ok ? "ok" : "error"));
+  }, []);
+  useEffect(() => { loadIt(); }, [loadIt]);
 
   const byGeo = useMemo(
     () => Object.fromEntries(rows.map((r) => [toGeoName(r.level), r])), [rows]);
 
   const option = useMemo(() => {
     const vals = rows.map((r) => r.estimate);
+    const mn = Math.min(...vals), mx = Math.max(...vals);
     const isPct = format === "porcentaje";
+    const hiBorder = cssVar("--focus");   // azul institucional: hover y selección
     const qc = ["--q1", "--q2", "--q3", "--q4", "--q5"].map(cssVar);
     const visualMap = isPct
       ? {
@@ -261,35 +363,53 @@ export function ChoroplethMap({ rows, format, hot, setHot }) {
         aspectScale: 1,
         layoutCenter: ["50%", "50%"], layoutSize: "98%",
         itemStyle: { borderColor: cssVar("--map-line"), borderWidth: 1, areaColor: cssVar("--surface-2") },
+        // Hover: solo borde azul (el relleno se mantiene vía areaColor por ítem);
+        // sin el amarillo ni el texto rojo del emphasis por defecto de ECharts.
         emphasis: {
-          itemStyle: { borderColor: cssVar("--ink"), borderWidth: 1.8 },
-          label: { show: true, fontWeight: 700 },
+          focus: "none",
+          itemStyle: { borderColor: hiBorder, borderWidth: 2.4, borderType: "solid" },
+          label: { show: true, fontWeight: 700, color: "#fff",
+            textBorderColor: "rgba(0,0,0,.6)", textBorderWidth: 2.6 },
         },
         select: { disabled: true },
         label: {
           show: true, fontSize: 9, fontWeight: 600, color: "#fff",
           textBorderColor: "rgba(0,0,0,.55)", textBorderWidth: 2.6,
         },
-        data: rows.map((r) => ({
-          name: toGeoName(r.level),
-          value: r.estimate,
-          itemStyle: r.unreliable
-            ? { borderColor: cssVar("--warn-line"), borderWidth: 1.5, borderType: "dashed" }
-            : {},
-        })),
+        data: rows.map((r) => {
+          const c = mapColor(r.estimate, format, mn, mx);
+          const isSel = selected != null && toGeoName(selected) === toGeoName(r.level);
+          const style = {};
+          if (r.unreliable) { style.borderColor = cssVar("--warn-line"); style.borderWidth = 1.5; style.borderType = "dashed"; }
+          if (isSel) { style.borderColor = hiBorder; style.borderWidth = 2.6; style.borderType = "solid"; }
+          return {
+            name: toGeoName(r.level),
+            value: r.estimate,
+            itemStyle: style,
+            // mismo relleno en hover/selección → no cambia el color del indicador.
+            emphasis: { itemStyle: { areaColor: c, borderColor: hiBorder, borderWidth: 2.4, borderType: "solid" } },
+            select: { itemStyle: { areaColor: c, borderColor: hiBorder, borderWidth: 2.6, borderType: "solid" } },
+          };
+        }),
       }],
     };
-  }, [rows, format, theme, byGeo]);
+  }, [rows, format, theme, byGeo, selected]);
 
-  // Resalta en el mapa el departamento activo del ranking.
+  // Resalta en el mapa el departamento activo del ranking (hover) tras cada render.
   useEffect(() => {
     const inst = ref.current?.getEchartsInstance?.();
     if (!inst) return;
     inst.dispatchAction({ type: "downplay", seriesIndex: 0 });
     if (hot) inst.dispatchAction({ type: "highlight", seriesIndex: 0, name: toGeoName(hot) });
-  }, [hot, ready]);
+  }, [hot, geo, selected]);
 
-  if (!ready) return <div className="sk" style={{ height: "100%", minHeight: 320 }} />;
+  if (geo === "loading") return <MapSkeleton label="Cargando mapa…" />;
+  if (geo === "error") return (
+    <div className="mapfail" role="alert">
+      <p>No se pudo cargar el mapa del Perú.</p>
+      <button className="btn btn-sm" onClick={loadIt}><RefreshCw size={14} /> Reintentar</button>
+    </div>
+  );
   return (
     <ReactECharts
       ref={ref}
@@ -299,6 +419,7 @@ export function ChoroplethMap({ rows, format, hot, setHot }) {
       onEvents={{
         mouseover: (e) => { const r = byGeo[e.name]; if (r && setHot) setHot(r.level); },
         mouseout: () => setHot && setHot(null),
+        click: (e) => { const r = byGeo[e.name]; if (r && setSelected) setSelected(r.level); },
       }}
     />
   );
