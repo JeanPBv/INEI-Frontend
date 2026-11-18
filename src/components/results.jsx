@@ -1,7 +1,9 @@
 // Cabecera de resultados, tarjeta KPI, banner de brecha, tabla, panel JSON y estados.
 import { useState } from "react";
-import { AlertTriangle, CheckCircle2, ChevronRight, FileWarning, Inbox, Loader2, Download } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronRight, FileWarning, Loader2, Download,
+  RefreshCw, Wallet, Droplet, Briefcase, HeartPulse, GraduationCap } from "lucide-react";
 import { n1, n0, n2, fmtValue, prettyLevel } from "../lib/format.js";
+import { buildGaps } from "../lib/gaps.js";
 import InfoTip from "./InfoTip.jsx";
 
 // Glosario breve para las ayudas contextuales (evita jerga sin explicación).
@@ -133,23 +135,131 @@ export function KpiCard({ row, format, title, year, universe, posLabel, negLabel
   );
 }
 
-// Banner de brecha (cruce por pobreza)
-export function GapBanner({ rows }) {
-  const get = (c) => rows.find((r) => String(r.level).startsWith(c));
-  const high = get("No pobre"), low = get("Pobre extremo");
-  if (!high || !low) return null;
-  const gap = high.estimate - low.estimate;
-  const overlap = !(high.ci_lower > low.ci_upper || low.ci_lower > high.ci_upper);
+// Brechas por condición de pobreza (cruce). Agrupa por subámbito y calcula la
+// diferencia No pobre − Pobre extremo DENTRO de cada ámbito. Nacional/área/región
+// → tarjetas; departamento → tabla compacta, ordenable y con buscador.
+// La diferencia se presenta como DESCRIPTIVA: no se infiere significancia del
+// solape de IC individuales (eso exigiría un contraste con el diseño muestral).
+export function GapBanner({ rows, level }) {
+  const gaps = buildGaps(rows);
+  if (!gaps.length) return null;
+  const asTable = level === "departamento" || gaps.length > 4;
   return (
-    <div className={`gap ${overlap ? "neu" : ""}`}>
-      <div>
-        <h3>Brecha de {n1(Math.abs(gap))} pp</h3>
-        <p>
-          No pobre <b>{n1(high.estimate)}%</b> frente a Pobre extremo <b>{n1(low.estimate)}%</b>.
-          {overlap
-            ? " No concluyente: los IC 95% se solapan (el solape no descarta una diferencia; haría falta una prueba formal)."
-            : " Diferencia significativa: los IC 95% no se solapan."}
-        </p>
+    <div className="gaps">
+      {asTable
+        ? <GapTable gaps={gaps} />
+        : <div className="gap-cards">{gaps.map((g) => <GapCard key={g.sub || "nacional"} g={g} />)}</div>}
+      <p className="gap-note">
+        Las brechas son <b>diferencias descriptivas</b> en puntos porcentuales (No pobre − Pobre extremo),
+        calculadas dentro de cada ámbito. Para afirmar significancia estadística se requiere un contraste
+        que considere el diseño muestral (estratos, conglomerados y ponderadores); no se infiere del solape
+        de los IC 95% individuales. <b>▲</b> = referencial (CV &gt; 15% en algún grupo).
+      </p>
+    </div>
+  );
+}
+
+// Flecha + palabra para el sentido (no se comunica solo con color).
+function gapDir(gap) {
+  return gap >= 0
+    ? { arrow: "↑", phrase: "supera a" }
+    : { arrow: "↓", phrase: "queda por debajo de" };
+}
+
+// Tarjeta de brecha de un subámbito (o nacional).
+function GapCard({ g }) {
+  const name = g.sub ? prettyLevel(g.sub) : "Nacional";
+  const d = gapDir(g.gap);
+  return (
+    <div className={`gap-card ${g.unreliable ? "ref" : ""}`}>
+      <div className="gap-card-head">
+        <span className="gap-sub">{name}</span>
+        {g.unreliable && <Chip kind="warn" icon={AlertTriangle}>Referencial</Chip>}
+      </div>
+      <div className="gap-val mono">
+        <span className="gap-arrow" aria-hidden="true">{d.arrow}</span>{n1(Math.abs(g.gap))} <small>pp</small>
+      </div>
+      <p className="gap-dir">No pobre {d.phrase} Pobre extremo</p>
+      <dl className="gap-nums">
+        <div><dt>No pobre</dt><dd className="mono">{n1(g.hi.estimate)}%</dd></div>
+        <div><dt>Pobre extremo</dt><dd className="mono">{n1(g.lo.estimate)}%</dd></div>
+      </dl>
+    </div>
+  );
+}
+
+// Tabla de brechas por departamento: ordenable y con buscador por nombre.
+const GAP_COLS = [
+  { key: "sub",  label: "Departamento", num: false },
+  { key: "hi",   label: "No pobre",      num: true },
+  { key: "lo",   label: "Pobre extremo", num: true },
+  { key: "gap",  label: "Brecha (pp)",   num: true },
+  { key: "dir",  label: "Sentido",       num: false },
+];
+function GapTable({ gaps }) {
+  const [q, setQ] = useState("");
+  const [sort, setSort] = useState({ key: "gap", dir: "desc" });
+  const onSort = (c) => setSort((s) =>
+    s.key === c.key ? { key: c.key, dir: s.dir === "asc" ? "desc" : "asc" }
+                    : { key: c.key, dir: c.num ? "desc" : "asc" });
+  const val = (g, k) => k === "hi" ? g.hi.estimate : k === "lo" ? g.lo.estimate : g.gap;
+
+  const needle = q.trim().toLowerCase();
+  const filtered = needle
+    ? gaps.filter((g) => prettyLevel(g.sub).toLowerCase().includes(needle))
+    : gaps;
+  const sorted = [...filtered].sort((a, b) => {
+    if (sort.key === "sub" || sort.key === "dir") {
+      const av = prettyLevel(a.sub), bv = prettyLevel(b.sub);
+      return sort.dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+    }
+    return sort.dir === "asc" ? val(a, sort.key) - val(b, sort.key) : val(b, sort.key) - val(a, sort.key);
+  });
+  const arrow = (k) => sort.key === k ? (sort.dir === "asc" ? " ▲" : " ▼") : "";
+
+  return (
+    <div className="card pad">
+      <div className="gap-search">
+        <label htmlFor="gap-q" className="tbl-note" style={{ display: "block", margin: "0 0 6px" }}>
+          Brecha No pobre − Pobre extremo por departamento (dentro de cada uno). Haz clic en una columna para ordenar.
+        </label>
+        <input id="gap-q" type="search" value={q} onChange={(e) => setQ(e.target.value)}
+          placeholder="Buscar departamento…" aria-label="Buscar departamento" />
+      </div>
+      <div className="tablebox">
+        <table className="res">
+          <thead>
+            <tr>
+              {GAP_COLS.map((c) => (
+                <th key={c.key} scope="col"
+                  aria-sort={sort.key === c.key ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+                  onClick={() => onSort(c)} style={{ cursor: "pointer", userSelect: "none" }}
+                  title="Ordenar por esta columna">
+                  {c.label}{arrow(c.key)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((g) => {
+              const d = gapDir(g.gap);
+              return (
+                <tr key={g.sub} className={g.unreliable ? "ref" : ""}>
+                  <th scope="row" className="lvl">{prettyLevel(g.sub)}{g.unreliable ? " ▲" : ""}</th>
+                  <td>{n1(g.hi.estimate)}%</td>
+                  <td>{n1(g.lo.estimate)}%</td>
+                  <td>{n1(Math.abs(g.gap))}</td>
+                  <td><span aria-hidden="true">{d.arrow}</span> No pobre {g.gap >= 0 ? "mayor" : "menor"}</td>
+                </tr>
+              );
+            })}
+            {!sorted.length && (
+              <tr><td colSpan={GAP_COLS.length} style={{ textAlign: "center", color: "var(--muted)" }}>
+                Sin departamentos que coincidan.
+              </td></tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -260,26 +370,54 @@ export function JsonPanel({ status, data }) {
 }
 
 // Estados
-export function EmptyState({ onExample }) {
+// Consultas sugeridas: se construyen a partir del catálogo real; si el ámbito
+// propuesto no se publica para el indicador, se usa el primero permitido.
+const SUGGESTIONS = [
+  { id: "pobreza_total",   level: "departamento", icon: Wallet,        name: "Pobreza monetaria por departamento", desc: "Incidencia de la pobreza en cada departamento." },
+  { id: "agua_red_publica", level: "nacional",    icon: Droplet,       name: "Acceso a agua por red pública",       desc: "Hogares abastecidos por red pública." },
+  { id: "empleo_informal", level: "nacional",     icon: Briefcase,     name: "Empleo informal a nivel nacional",    desc: "Parte de la PEA ocupada con empleo informal." },
+  { id: "seguro_salud",    level: "nacional",      icon: HeartPulse,    name: "Población con seguro de salud",       desc: "Personas afiliadas a algún seguro de salud." },
+  { id: "analfabetismo",   level: "area",          icon: GraduationCap, name: "Analfabetismo por área urbana y rural", desc: "Tasa de analfabetismo (15 y más) por ámbito." },
+];
+function buildSuggestions(catalog) {
+  const byId = Object.fromEntries((catalog || []).map((c) => [c.id, c]));
+  return SUGGESTIONS.flatMap((s) => {
+    const c = byId[s.id];
+    if (!c) return [];
+    const allowed = c.levels_allowed || ["nacional"];
+    const level = allowed.includes(s.level) ? s.level : allowed[0];
+    return [{ ...s, q: { indicator: s.id, level, cross: false } }];
+  });
+}
+
+export function EmptyState({ catalog = [], onExample }) {
+  const suggestions = buildSuggestions(catalog);
   return (
-    <div className="empty">
-      <div className="ico"><Inbox size={34} /></div>
-      <h3>Configura tu consulta</h3>
-      <p>Elige un indicador, un ámbito geográfico y un año. Cada cifra trae su error estándar, CV e IC 95%.</p>
-      <div className="steps">
-        <div className="step"><b>1 · Indicador</b><span>Qué quieres medir</span></div>
-        <div className="step"><b>2 · Ámbito y año</b><span>A qué nivel y de qué año</span></div>
-        <div className="step"><b>3 · Confiabilidad</b><span>CV ≤ 15% = confiable</span></div>
+    <section className="welcome">
+      <h2 className="welcome-h">Explora los indicadores socioeconómicos del Perú</h2>
+      <p className="welcome-sub">
+        Consulta información sobre pobreza, educación, salud, empleo y acceso a servicios
+        básicos a partir de los microdatos de la ENAHO.
+      </p>
+      {suggestions.length > 0 && <p className="welcome-lbl">Consultas sugeridas</p>}
+      <div className="sugg-grid">
+        {suggestions.map((s) => {
+          const Icon = s.icon;
+          return (
+            <button key={s.id} type="button" className="sugg-card"
+              onClick={() => onExample && onExample(s.q)}
+              aria-label={`Consultar: ${s.name}`}>
+              <span className="sugg-ic" aria-hidden="true"><Icon size={18} /></span>
+              <span className="sugg-tx">
+                <span className="sugg-name">{s.name}</span>
+                <span className="sugg-desc">{s.desc}</span>
+              </span>
+              <ChevronRight size={18} className="sugg-arrow" aria-hidden="true" />
+            </button>
+          );
+        })}
       </div>
-      {onExample && (
-        <p style={{ marginTop: 18 }}>
-          Ejemplos:{" "}
-          <a href="#" onClick={(e) => { e.preventDefault(); onExample({ indicator: "pobreza_total", level: "departamento" }); }}>pobreza por departamento</a>
-          {" · "}
-          <a href="#" onClick={(e) => { e.preventDefault(); onExample({ indicator: "agua_red_publica", level: "nacional", cross: true }); }}>agua × pobreza</a>
-        </p>
-      )}
-    </div>
+    </section>
   );
 }
 
@@ -293,24 +431,55 @@ export function LoadingState() {
   );
 }
 
-export function ErrorState({ status, error, allowed, onLevel }) {
+// Mensaje comprensible según el tipo de error (sin exponer texto crudo de
+// Python/R/FastAPI; el detalle queda en un apartado opcional).
+function errorCopy(status, error) {
+  const code = error?.error;
+  if (code === "no_connection")
+    return { title: "No se pudo conectar con el servicio", body: "Revisa tu conexión o que el servicio esté disponible e inténtalo de nuevo." };
+  if (code === "engine_timeout" || status === 504)
+    return { title: "La consulta tardó demasiado", body: "El cálculo excedió el tiempo permitido. Puedes reintentar; algunas combinaciones son más pesadas." };
+  if (status === 503)
+    return { title: "Servicio no disponible", body: "El servicio no está disponible temporalmente. Inténtalo de nuevo en unos momentos." };
+  if (code === "engine_error" || status === 502)
+    return { title: "Error del motor de cálculo", body: "El motor estadístico devolvió un error al procesar la consulta. Puedes reintentar o probar otra combinación." };
+  if (code === "no_data")
+    return { title: "Sin datos para esta combinación", body: "No hay resultados para el indicador, ámbito y año seleccionados. Prueba otra combinación." };
+  if (status === 404)
+    return { title: "No encontrado", body: "No se encontró el recurso solicitado. Prueba otra combinación." };
+  return { title: "No se pudo completar la consulta", body: "Ocurrió un error al consultar el servicio. Puedes reintentar." };
+}
+
+export function ErrorState({ status, error, allowed, onLevel, onRetry }) {
   const isLevel = error?.error === "level_not_allowed";
+  const copy = errorCopy(status, error);
+  const levels = allowed || error?.levels_allowed;
+  const tech = [error?.error && `error: ${error.error}`, status != null && `status: ${status}`,
+    error?.message && `message: ${error.message}`].filter(Boolean).join("\n");
   return (
     <div className="alert" role="alert">
-      <h3>{status === 404 ? "Indicador no encontrado" : isLevel ? "Ámbito no permitido" : "No se pudo consultar"}</h3>
-      <p>{error?.message || "Ocurrió un error al consultar la API."}</p>
-      {isLevel && (allowed || error?.levels_allowed) && (
-        <div className="chips" style={{ marginTop: 6 }}>
-          {(allowed || error.levels_allowed).map((a) => (
-            <button key={a} className="btn btn-sm" onClick={() => onLevel && onLevel(a)}>
-              Consultar por {a.replace("_", " ")}
-            </button>
-          ))}
-        </div>
+      <h3>{isLevel ? "Ese ámbito no está disponible" : copy.title}</h3>
+      <p>{isLevel
+        ? "Este indicador no se publica a ese nivel de desagregación. Elige un ámbito disponible:"
+        : copy.body}</p>
+      <div className="err-actions">
+        {isLevel && levels && levels.map((a) => (
+          <button key={a} className="btn btn-sm" onClick={() => onLevel && onLevel(a)}>
+            Consultar por {a.replace("_", " ")}
+          </button>
+        ))}
+        {!isLevel && onRetry && (
+          <button className="btn btn-sm" onClick={onRetry}>
+            <RefreshCw size={14} /> Reintentar
+          </button>
+        )}
+      </div>
+      {tech && (
+        <details className="err-tech">
+          <summary>Detalle técnico</summary>
+          <pre>{tech}</pre>
+        </details>
       )}
-      <p className="mono" style={{ marginTop: 10, fontSize: 12 }}>
-        <code>{error?.error || status}</code>
-      </p>
     </div>
   );
 }
