@@ -27,8 +27,9 @@ function tipCss() {
 
 const MONO = "'IBM Plex Mono', monospace";
 
-// ---------- Barras apiladas 100% Sí/No (indicadores de proporción) ----------
-export function ProportionBarChart({ rows, cross }) {
+// Barras apiladas 100% Sí/No (indicadores de proporción)
+// onDrill(level, label): si se pasa, cada barra es clicable para abrir su desglose.
+export function ProportionBarChart({ rows, cross, onDrill }) {
   const { theme } = useTheme();
   const sorted = useMemo(() => [...rows].sort((a, b) => b.estimate - a.estimate), [rows]);
 
@@ -72,6 +73,7 @@ export function ProportionBarChart({ rows, cross }) {
       series: [
         {
           name: "Sí", type: "bar", stack: "t", data: yes, barMaxWidth: 26,
+          cursor: onDrill ? "pointer" : "default",
           label: {
             show: true, position: "insideRight", color: "#fff",
             fontFamily: MONO, fontWeight: 600, fontSize: 11.5,
@@ -79,16 +81,78 @@ export function ProportionBarChart({ rows, cross }) {
           },
         },
         { name: "No", type: "bar", stack: "t", data: no, barMaxWidth: 26,
+          cursor: onDrill ? "pointer" : "default",
           itemStyle: { color: cssVar("--no") } },
       ],
     };
-  }, [sorted, cross, theme]);
+  }, [sorted, cross, theme, onDrill]);
 
   const h = Math.max(220, sorted.length * 30 + 48);
+  const onEvents = onDrill
+    ? { click: (e) => { const r = sorted[e.dataIndex]; if (r) onDrill(r.level, prettyLevel(r.level)); } }
+    : undefined;
+  return <ReactECharts option={option} style={{ height: h }} notMerge onEvents={onEvents} />;
+}
+
+// Desglose por categorías (distribución, % por etiqueta)
+// restLabel: etiqueta del "resto" (p. ej. "Sin red pública"); si se pasa, esa barra
+// va siempre al final y en gris, separada de las categorías del indicador.
+export function CategoryBarChart({ rows, restLabel }) {
+  const { theme } = useTheme();
+  const sorted = useMemo(() => {
+    const main = rows.filter((r) => !restLabel || String(r.level) !== restLabel)
+                     .sort((a, b) => b.estimate - a.estimate);
+    const rest = restLabel ? rows.filter((r) => String(r.level) === restLabel) : [];
+    return [...main, ...rest];   // el "resto" siempre al final
+  }, [rows, restLabel]);
+  const option = useMemo(() => {
+    const cats = sorted.map((r) => String(r.level));
+    const byCat = Object.fromEntries(sorted.map((r, i) => [i, r]));
+    const isRest = (r) => restLabel && String(r.level) === restLabel;
+    return {
+      grid: { left: 8, right: 64, top: 8, bottom: 28, containLabel: true },
+      tooltip: {
+        trigger: "axis", axisPointer: { type: "shadow" }, ...tipCss(),
+        formatter: (ps) => {
+          const r = byCat[ps[0].dataIndex];
+          const q = r.unreliable ? "Referencial (CV > 15%)" : "Confiable";
+          return `<b>${r.level}</b><br/><b>${n1(r.estimate)}%</b>`
+            + `<br/>IC 95% [${n1(r.ci_lower)} – ${n1(r.ci_upper)}] · CV ${n1(r.cv)}%<br/>${q}`;
+        },
+      },
+      xAxis: {
+        type: "value", min: 0,
+        axisLabel: { formatter: "{value}%", color: cssVar("--muted") },
+        splitLine: { lineStyle: { color: cssVar("--grid") } },
+      },
+      yAxis: {
+        type: "category", data: cats, inverse: true,
+        axisLabel: { color: cssVar("--ink-2"), width: 190, overflow: "truncate" },
+        axisLine: { lineStyle: { color: cssVar("--line") } },
+        axisTick: { show: false },
+      },
+      series: [{
+        type: "bar", barMaxWidth: 24,
+        data: sorted.map((r) => ({
+          value: +r.estimate,
+          itemStyle: {
+            color: cssVar(isRest(r) ? "--no" : (r.unreliable ? "--bar-ref" : "--bar")),
+            borderRadius: [0, 3, 3, 0],
+          },
+        })),
+        label: {
+          show: true, position: "right", color: cssVar("--ink-2"),
+          fontFamily: MONO, fontWeight: 600, fontSize: 11.5,
+          formatter: (p) => `${n1(p.value)}%${sorted[p.dataIndex].unreliable ? "  ▲" : ""}`,
+        },
+      }],
+    };
+  }, [sorted, theme, restLabel]);
+  const h = Math.max(200, sorted.length * 34 + 48);
   return <ReactECharts option={option} style={{ height: h }} notMerge />;
 }
 
-// ---------- Barras simples (promedios en S/, totales en conteo) ----------
+// Barras simples (promedios en S/, totales en conteo)
 export function SimpleBarChart({ rows, format }) {
   const { theme } = useTheme();
   const sorted = useMemo(() => [...rows].sort((a, b) => b.estimate - a.estimate), [rows]);
@@ -135,7 +199,7 @@ export function SimpleBarChart({ rows, format }) {
   return <ReactECharts option={option} style={{ height: h }} notMerge />;
 }
 
-// ---------- Mapa coroplético del Perú (departamentos) ----------
+// Mapa coroplético del Perú (departamentos)
 let GEO_PROMISE = null;
 function loadGeo() {
   if (!GEO_PROMISE) {
@@ -225,12 +289,12 @@ export function ChoroplethMap({ rows, format, hot, setHot }) {
     if (hot) inst.dispatchAction({ type: "highlight", seriesIndex: 0, name: toGeoName(hot) });
   }, [hot, ready]);
 
-  if (!ready) return <div className="sk" style={{ height: 460 }} />;
+  if (!ready) return <div className="sk" style={{ height: "100%", minHeight: 320 }} />;
   return (
     <ReactECharts
       ref={ref}
       option={option}
-      style={{ height: 520 }}
+      style={{ height: "100%", minHeight: 320 }}
       notMerge
       onEvents={{
         mouseover: (e) => { const r = byGeo[e.name]; if (r && setHot) setHot(r.level); },

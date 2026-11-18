@@ -47,6 +47,22 @@ function normRow(f) {
   };
 }
 
+// Desglose por etiquetas de un indicador dentro de un subámbito (drill-down).
+// subgroup vacío = desglose nacional.
+export async function distribution({ indicator, level, subgroup, year }) {
+  const r = await get("/distribution", { indicator, level, subgroup, year });
+  return {
+    ok: r.ok,
+    status: r.status,
+    url: r.url,
+    request: `GET ${r.url.replace(API_BASE, "")}`,
+    meta: r.ok ? r.body.meta : null,
+    rows: r.ok ? (r.body.data || []).map(normRow) : [],
+    raw: r.body,
+    error: r.error,
+  };
+}
+
 // Consulta principal: estimación o cruce. Devuelve también el request/response crudos.
 export async function query({ indicator, level, year, cross }) {
   const path = cross ? "/crosstabs" : "/estimates";

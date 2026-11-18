@@ -1,9 +1,4 @@
-/* =========================================================================
-   Servicio estadístico ENAHO — tokens de diseño
-   Uso: importar una vez (p. ej. en src/main.tsx). El tema oscuro se activa
-   con <html data-theme="dark">. Usar SOLO estas variables para color.
-   Tipografía: IBM Plex Sans (texto) + IBM Plex Mono (números y códigos).
-   ========================================================================= */
+/* Tokens de diseno. Tema oscuro con <html data-theme="dark">. Usar solo estas variables para color. */
 
 :root {
   /* Superficies y texto */

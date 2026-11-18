@@ -17,7 +17,7 @@ export const POVERTY_VAR = { "Pobre extremo": "--p1", "Pobre no extremo": "--p2"
 // Vistas de la app (menú del sidebar + título/descripción del TopBar).
 export const VIEWS = [
   { group: "Análisis", path: "/consulta", icon: "BarChart3", label: "Consulta",
-    desc: "Una cifra por ámbito, con su confiabilidad", ready: true },
+    desc: "Explora indicadores de la ENAHO por año y ámbito geográfico", ready: true },
   { group: "Análisis", path: "/mapa", icon: "Map", label: "Mapa",
     desc: "Indicador por departamento en el mapa del Perú", ready: true },
   // Ocultas del sidebar temporalmente (pendientes de diseño). Reactivar quitando el comentario:
