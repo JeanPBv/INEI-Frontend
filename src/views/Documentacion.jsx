@@ -80,7 +80,7 @@ export default function Documentacion({ meta }) {
             </p>
             <p>
               Las estimaciones consideran el diseño muestral de la encuesta e incluyen medidas de precisión
-              —error estándar (EE), coeficiente de variación (CV) e intervalo de confianza al 95%— que facilitan
+              (error estándar, coeficiente de variación e intervalo de confianza al 95%) que facilitan
               su interpretación. La disponibilidad de cada indicador depende del año, del módulo de datos y del
               ámbito de consulta. Años cargados: {range}; módulos 01 (Vivienda), 34 (Sumaria) y, a nivel de
               persona, 200 (miembros del hogar), 300 (educación), 400 (salud) y 500 (empleo).
@@ -197,8 +197,9 @@ export default function Documentacion({ meta }) {
           <section id="cruce" className="doc-sec">
             <h2>La comparación por pobreza</h2>
             <p>
-              Una cifra sola —por ejemplo, 90% de hogares con agua de red— puede esconder diferencias entre
-              grupos. La comparación examina el indicador según la condición de pobreza del hogar (pobre extremo,
+              Una cifra general puede esconder diferencias entre grupos. El acceso a agua por red, por ejemplo,
+              suele variar mucho entre hogares pobres y no pobres aunque el promedio nacional sea alto.
+              La comparación examina el indicador según la condición de pobreza del hogar (pobre extremo,
               pobre no extremo, no pobre) para observar la brecha. En la pantalla es el interruptor “Comparar
               según condición de pobreza”; por API, <code>/crosstabs</code>. Solo aplica a los indicadores que
               admiten esta comparación.
@@ -231,7 +232,7 @@ export default function Documentacion({ meta }) {
             </p>
             <ul>
               <li>Para agua y desagüe (red pública = unión de varias categorías), muestra solo las categorías
-                del indicador —que suman el % del titular— más una barra gris <code>Sin red pública</code> con el
+                del indicador (que suman el porcentaje del titular) más una barra gris <code>Sin red pública</code> con el
                 resto, hasta 100%.</li>
               <li>Para el resto (pobreza, ocupación, etc.) muestra la distribución completa de la variable, que suma 100%.</li>
               <li>Cada categoría trae su IC 95% y CV; las referenciales (CV &gt; 15%) van marcadas con ▲.</li>
@@ -287,16 +288,16 @@ export default function Documentacion({ meta }) {
             <h2>Fuentes y notas</h2>
             <dl className="doc-dl">
               <dt>Datos</dt>
-              <dd>microdatos ENAHO del INEI — Vivienda (<code>Enaho01-AAAA-100</code>), Sumaria (<code>Sumaria-AAAA</code>)
+              <dd>microdatos ENAHO del INEI: Vivienda (<code>Enaho01-AAAA-100</code>), Sumaria (<code>Sumaria-AAAA</code>)
                 y, por persona, miembros del hogar (<code>…-200</code>), educación (<code>…-300</code>), salud
                 (<code>…-400</code>) y empleo (<code>…-500</code>). Las etiquetas de cada categoría se leen del
                 propio <code>.sav</code> de cada año.</dd>
               <dt>Gasto</dt>
               <dd>el gasto per cápita es nominal (soles corrientes); comparar entre años requiere un deflactor.</dd>
               <dt>Mapa</dt>
-              <dd>GeoJSON de departamentos del Perú — revisar su licencia antes de publicar.</dd>
+              <dd>GeoJSON de departamentos del Perú.</dd>
               <dt>Pobreza</dt>
-              <dd>cifra oficial de referencia — nacional 2024 ≈ 27.6%.</dd>
+              <dd>cifra oficial de referencia: nacional 2024 ≈ 27.6%.</dd>
             </dl>
           </section>
         </div>
